@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { missionDir } from '../paths.mjs';
+import { fileURLToPath } from 'node:url';
+import { missionDir, paths } from '../paths.mjs';
 import { redact } from './redact.mjs';
 import { stats, verdict } from './views.mjs';
 
@@ -17,14 +18,16 @@ const GROK_CANDIDATES = [
 const KINDS = ['overengineering', 'stuck', 'full-build', 'off-scope', 'no-proof', 'integration', 'other'];
 const SEVERITIES = ['low', 'medium', 'high'];
 
-export const PAIN_POINTS = `Rules distilled from the operator's history with coding agents (treat as hard expectations):
-1. The manager must not claim "done" until every requirement has concrete proof (test output, commit, URL, screenshot). New gaps found after a "done" claim are the worst failure.
-2. Stay on the P0 goal. Hardening, refactors, extra tooling, test-harness fixes and polish that were not asked for are over-engineering unless they unblock the goal.
-3. Prefer the smallest targeted test that proves the change. Repeated full builds or full test suites to check one change waste time.
-4. Repeating the same failing command or fixing the same error three times is "stuck": change approach, narrow scope, or ask the operator.
-5. Subagent results must be integrated and verified by the manager; a finished subagent is not a finished task.
-6. Test like a real user when the task is user-facing (actual flow, actual environment), not only unit tests.
-7. Report progress concretely: what is done with proof, what remains, what is blocked.`;
+const BRIEF_FILES = [path.join(paths.home, 'director.md'), fileURLToPath(new URL('../../director.md', import.meta.url))];
+
+export function directorBrief() {
+  for (const f of BRIEF_FILES) {
+    try {
+      return fs.readFileSync(f, 'utf8').trim();
+    } catch {}
+  }
+  return 'You are the Flight Director, an independent reviewer of a coding-agent mission. Flag only what matters.';
+}
 
 function findGrok() {
   return GROK_CANDIDATES.find((p) => {
@@ -50,12 +53,7 @@ export function buildPrompt(mission) {
   const v = verdict(s);
   const st = stats(s, now);
   const L = [];
-  L.push('You are FLIGHT DIRECTOR, an independent supervisor watching a Cursor coding-agent mission run by a MANAGER agent that delegates to subagents.');
-  L.push('You only observe and judge. Never edit files or run commands. You may read files in the workspace to check claims.');
-  L.push('');
-  L.push(PAIN_POINTS);
-  L.push('');
-  L.push('Look for these finding kinds: overengineering (work beyond the acceptance criteria), stuck (no progress, repeated failures, very long runs), full-build (full builds/suites instead of targeted tests), off-scope (work unrelated to open tasks), no-proof (cards in review or claimed done without evidence), integration (subagent output not integrated, file collisions).');
+  L.push(directorBrief());
   L.push('');
   L.push(`# Mission ${s.id}: ${s.title}`);
   L.push(`Status ${s.status} · running ${ago(now - s.startedAt)} · ${v.done}/${v.total} proven · verdict ${v.go ? 'GO' : 'NO-GO'}`);
@@ -107,7 +105,7 @@ export function buildPrompt(mission) {
   L.push('# Output');
   L.push('Reply with ONLY one JSON object, no prose, no code fence:');
   L.push('{"summary":"one sentence on mission health","findings":[{"kind":"overengineering|stuck|full-build|off-scope|no-proof|integration|other","severity":"low|medium|high","taskId":"CT-1 or null","title":"short headline","detail":"evidence you saw","action":"one imperative instruction for the manager"}],"resolved":["F-1"]}');
-  L.push('At most 3 new findings. Do not repeat an open finding unless it got worse. Put ids of open findings that are no longer true in "resolved". If the mission is healthy, return an empty findings array. Use high only when the mission is clearly wasting time or heading to a false "done".');
+  L.push('At most 3 new findings; an open finding only comes back if it got worse. "resolved" lists open finding ids that are no longer true.');
   return L.join('\n');
 }
 

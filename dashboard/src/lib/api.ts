@@ -204,18 +204,27 @@ export function usePoll<T>(path: string | null, intervalMs: number) {
   return { data, error, lastOk, refresh }
 }
 
+export interface Route { mission: string | null; view: string }
+
+function readRoute(): Route {
+  const m = /^#\/(?:m\/([a-z0-9-]+))?\/?([a-z]+)?/i.exec(location.hash)
+  return { mission: m?.[1] ?? null, view: m?.[2] ?? 'overview' }
+}
+
 export function useHashRoute() {
-  const read = () => /#\/m\/([a-z0-9-]+)/i.exec(location.hash)?.[1] ?? null
-  const [id, setId] = useState<string | null>(read)
+  const [route, setRoute] = useState<Route>(readRoute)
   useEffect(() => {
-    const on = () => setId(read())
+    const on = () => setRoute(readRoute())
     addEventListener('hashchange', on)
     return () => removeEventListener('hashchange', on)
   }, [])
-  const go = useCallback((next: string) => {
-    location.hash = `#/m/${next}`
+  const go = useCallback((next: Partial<Route>) => {
+    const cur = readRoute()
+    const mission = next.mission !== undefined ? next.mission : cur.mission
+    const view = next.view ?? cur.view
+    location.hash = mission ? `#/m/${mission}/${view}` : `#/${view}`
   }, [])
-  return [id, go] as const
+  return [route, go] as const
 }
 
 export function useNow(ms = 1000) {
