@@ -1,6 +1,5 @@
-import { classifyCommand, isFullBuild, parseExitCode, taskTag } from './classify.mjs';
+import { classifyCommand, parseExitCode, taskTag } from './classify.mjs';
 import { redact } from './redact.mjs';
-import { verdict } from './views.mjs';
 
 const PERMISSION_HOOKS = new Set(['preToolUse', 'subagentStart', 'beforeShellExecution', 'beforeMCPExecution', 'beforeReadFile']);
 const QUIET_TOOLS = new Set(['Read', 'Grep', 'Glob', 'LS', 'ReadFile', 'SemanticSearch', 'Search']);
@@ -89,14 +88,6 @@ export class HookHandler {
         user_message: `Goally: ${running} agents are running (limit ${cfg.maxParallelAgents}). Wait for one to finish, then launch ${tag || 'this task'} again.`,
       };
     }
-    const held = cfg.intervention === 'block' && tag && s.findings.find((f) => f.status === 'open' && f.severity === 'high' && f.taskId === tag);
-    if (held) {
-      mission.append('blocked', { what: 'subagent', reason: `${tag} held by ${held.id}`, agent: 'main' });
-      return {
-        permission: 'deny',
-        user_message: `Goally: ${tag} is on hold until Flight Director finding ${held.id} is handled: ${held.action || held.title}`,
-      };
-    }
     mission.append('agent.start', {
       agentId: payload.subagent_id || `sa-${Date.now().toString(36)}`,
       subagentType: payload.subagent_type,
@@ -133,28 +124,13 @@ export class HookHandler {
     return out;
   }
 
-  on_beforeShellExecution({ mission, payload, conversationId, cfg, out }) {
-    const cmd = payload.command || '';
-    if (!isFullBuild(cmd, cfg.fullBuild.patterns)) return { permission: 'allow' };
-    const flagged = mission.state.findings.some((f) => f.status === 'open' && f.kind === 'full-build');
-    const block = cfg.fullBuild.policy === 'block' || (cfg.intervention === 'block' && flagged);
-    if (!block) return { permission: 'allow' };
-    mission.append('blocked', { what: 'full build', reason: redact(cmd, 200), agent: agentOf(mission.state, conversationId) });
-    return {
-      permission: 'deny',
-      user_message: `Goally blocked a full build: ${cmd.slice(0, 120)}`,
-      agent_message:
-        '[GOALLY] Full builds are blocked for this mission. Run only the targeted test or check from the task card (verify field) for the code you changed. If the card truly needs a full build, explain why with goally_update_task and ask the user.',
-    };
-  }
-
-  recordTool({ mission, payload, conversationId, cfg, ok }) {
+  recordTool({ mission, payload, conversationId, ok }) {
     const agent = agentOf(mission.state, conversationId);
     const tool = payload.tool_name || 'tool';
     if (isGoallyTool(tool, 'goally_start_run')) this.maybeBind(mission, conversationId, payload);
     if (tool === 'Task' || /^MCP:/.test(tool) && /goally_/.test(tool)) return agent;
     const command = tool === 'Shell' ? payload.tool_input?.command : null;
-    const cls = command ? classifyCommand(command, cfg.fullBuild.patterns) : { kind: QUIET_TOOLS.has(tool) ? 'read' : 'other' };
+    const cls = command ? classifyCommand(command) : { kind: QUIET_TOOLS.has(tool) ? 'read' : 'other' };
     const exitCode = ok ? parseExitCode(payload.tool_output) : null;
     const success = ok && (exitCode == null || exitCode === 0);
     mission.append('tool', {
@@ -175,12 +151,7 @@ export class HookHandler {
   on_postToolUse(ctx) {
     const r = this.recordTool({ ...ctx, ok: true });
     const agent = typeof r === 'string' ? r : r.agent;
-    const out = this.inject(ctx.mission, agent, {});
-    if (r.cls?.kind === 'build' && r.cls.full && ctx.cfg.fullBuild.policy === 'warn' && agent === 'main') {
-      const warn = '[GOALLY] That was a full build. Prefer the targeted test from the task card; full builds are slow and rarely prove the specific change.';
-      out.additional_context = out.additional_context ? `${out.additional_context}\n\n${warn}` : warn;
-    }
-    return out;
+    return this.inject(ctx.mission, agent, {});
   }
 
   on_postToolUseFailure(ctx) {
@@ -201,31 +172,19 @@ export class HookHandler {
     return out;
   }
 
-  on_stop({ mission, payload, conversationId, cfg, out }) {
+  on_stop({ mission, payload, conversationId, out }) {
     const s = mission.state;
     if (agentOf(s, conversationId) !== 'main') return out;
     const loop = payload.loop_count ?? 0;
-    let followup = '';
-    if (s.status === 'active' && payload.status === 'completed' && loop < cfg.stopLoopLimit) {
-      const parts = [];
-      const msg = this.delivery.nextForHook(mission, { all: true });
-      if (msg) parts.push(msg);
-      const v = verdict(s);
-      const actionable = v.stations.filter((x) => !x.go && x.status !== 'blocked');
-      if (!v.go && actionable.length) {
-        parts.push(
-          [
-            `[GOALLY] Mission "${s.title}" is NO-GO (${v.done}/${v.total} proven). You ended your turn with open work:`,
-            ...v.blockers.slice(0, 8).map((b) => `- ${b}`),
-            'Continue with the next open task. If you need the user, mark the card with goally_update_task status "blocked" and a note explaining the question; blocked cards do not trigger auto-continue.',
-          ].join('\n'),
-        );
-      }
-      followup = parts.join('\n\n');
-    }
-    mission.append('main.stop', { status: payload.status, loopCount: loop, followup: Boolean(followup) });
+    // Deliver any pending inbox messages via additional_context path is handled by postToolUse;
+    // stop only records and may attach queued messages without auto-continuing the loop.
+    const msg = this.delivery.nextForHook(mission, { all: true });
+    if (msg) out.additional_context = msg;
+    mission.append('main.stop', { status: payload.status, loopCount: loop, followup: false });
     this.supervisor.trigger(mission, 'main-stop');
-    if (followup) out.followup_message = followup;
     return out;
   }
 }
+
+// Local import to avoid circular dependency issues with views used only in sessionStart
+import { verdict } from './views.mjs';

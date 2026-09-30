@@ -7,13 +7,13 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState, Kpi, Pill } from './shared'
 
-const chartConfig = { done: { label: 'Proven', color: 'var(--success)' }, open: { label: 'Open', color: 'var(--input)' } } satisfies ChartConfig
+const chartConfig = { done: { label: 'Launched', color: 'var(--success)' }, open: { label: 'Open', color: 'var(--input)' } } satisfies ChartConfig
 
 export function HistoryView({ overview, now, onPick }: { overview: Overview; now: number; onPick: (id: string) => void }) {
   const ms = overview.missions
   if (!ms.length) return <EmptyState icon={HistoryIcon} title="No missions yet" />
   const finished = ms.filter((m) => m.status === 'complete' || m.status === 'aborted')
-  const cards = ms.reduce((a, m) => a + m.total, 0)
+  const tasks = ms.reduce((a, m) => a + m.total, 0)
   const proven = ms.reduce((a, m) => a + m.done, 0)
   const avg = finished.length ? finished.reduce((a, m) => a + m.elapsedMs, 0) / finished.length : null
   const data = [...ms].reverse().slice(-12).map((m) => ({ name: m.title.length > 18 ? m.title.slice(0, 17) + '…' : m.title, done: m.done, open: m.total - m.done }))
@@ -22,14 +22,14 @@ export function HistoryView({ overview, now, onPick }: { overview: Overview; now
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi icon={Rocket} label="Missions" value={ms.length} sub={`${ms.filter((m) => m.go).length} reached GO`} />
-        <Kpi icon={ShieldCheck} label="Cards proven" value={`${proven}/${cards}`} sub={pct(cards ? proven / cards : null)} />
+        <Kpi icon={ShieldCheck} label="Tasks launched" value={`${proven}/${tasks}`} sub={pct(tasks ? proven / tasks : null)} />
         <Kpi icon={Bot} label="Agents launched" value={ms.reduce((a, m) => a + m.agentsTotal, 0)} sub={avg ? `avg mission ${dur(avg)}` : undefined} />
         <Kpi icon={Hammer} label="Full builds" value={ms.reduce((a, m) => a + m.fullBuilds, 0)} sub={`${ms.reduce((a, m) => a + m.findings, 0)} Director findings`} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Cards per mission</CardTitle>
+          <CardTitle>Tasks per mission</CardTitle>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="aspect-auto h-48 w-full">
@@ -56,7 +56,7 @@ export function HistoryView({ overview, now, onPick }: { overview: Overview; now
               <TableRow>
                 <TableHead>Mission</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Cards</TableHead>
+                <TableHead className="text-right">Tasks</TableHead>
                 <TableHead className="hidden text-right sm:table-cell">Agents</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Duration</TableHead>
                 <TableHead className="text-right">Updated</TableHead>

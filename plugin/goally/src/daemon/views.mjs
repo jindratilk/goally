@@ -202,6 +202,6 @@ export function continuationBrief(mission, { url } = {}) {
     for (const b of v.blockers) out.push(`- ${b}`);
   }
   out.push('');
-  out.push('Continue with the remaining tasks only. Tag every subagent task with its [CT-n] id and finish each card with goally_complete_task plus evidence.');
+  out.push('Continue with the remaining tasks only. Tag every subagent task with its [CT-n] id and finish each task with goally_complete_task plus evidence.');
   return out.join('\n');
 }

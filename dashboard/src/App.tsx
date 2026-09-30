@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { post, useHashRoute, useNow, usePoll, type Mission, type MissionSummary, type Overview } from '@/lib/api'
-import { clock } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -15,11 +14,12 @@ import { Director } from '@/components/director'
 import { HistoryView } from '@/components/history'
 import { Overview as OverviewView } from '@/components/overview'
 import { SettingsView } from '@/components/settings'
+import { GoalProgress } from '@/components/goal-progress'
 import { Dot, PageHeader, Pill } from '@/components/shared'
 
 const MISSION_VIEWS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'board', label: 'Board', icon: SquareKanban },
+  { id: 'overview', label: 'Stats', icon: LayoutDashboard },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'director', label: 'Flight Director', icon: Radar },
   { id: 'activity', label: 'Activity', icon: ScrollText },
@@ -77,7 +77,7 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
           {label} <span className="tabnum">{list.length}</span>
         </div>
         {list.map((m) => (
-          <button key={m.id} onClick={() => go({ mission: m.id, view: MISSION_VIEWS.some((v) => v.id === view) ? view : 'overview' })} className={cn('flex h-8 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-foreground/5', m.id === missionId ? 'bg-foreground/[0.06] text-foreground' : 'text-muted-foreground')}>
+          <button key={m.id} onClick={() => go({ mission: m.id, view: MISSION_VIEWS.some((v) => v.id === view) ? view : 'board' })} className={cn('flex h-8 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-foreground/5', m.id === missionId ? 'bg-foreground/[0.06] text-foreground' : 'text-muted-foreground')}>
             <MissionIcon m={m} />
             <span className="min-w-0 flex-1 truncate">{m.title}</span>
             <span className="text-[11px] text-subtle tabnum">
@@ -147,7 +147,7 @@ function useAlerts(mission: Mission | null) {
       s.msgs.set(m.id, m.status)
       if (prev && ['accepted', 'resolved', 'rejected'].includes(m.status)) toast(`${m.id} ${m.status} by main chat`, { description: m.ackNote || m.text.slice(0, 90) })
     }
-    if (s.go === false && mission.verdict.go) toast.success('Poll is GO', { description: 'Every card has proof.' })
+    if (s.go === false && mission.verdict.go) toast.success('Poll is GO', { description: 'Every task has proof.' })
     s.go = mission.verdict.go
   }, [mission])
 }
@@ -156,7 +156,7 @@ function Welcome() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-5 py-20">
       <h1 className="text-3xl font-semibold tracking-tight">No mission in flight</h1>
-      <p className="text-muted-foreground">Give a big task to the agent with the goally skill. It splits the work into cards, runs agents in parallel and this board follows along.</p>
+      <p className="text-muted-foreground">Give a big task to the agent with the goally skill. It splits the work into tasks, runs agents in parallel and this board follows along.</p>
       <div className="rounded-lg bg-card p-4 ring-1 ring-foreground/10">
         <code className="font-mono text-sm">/goally Add CSV export to reports</code>
       </div>
@@ -167,7 +167,7 @@ function Welcome() {
   )
 }
 
-const TITLES: Record<string, string> = { overview: 'Overview', board: 'Board', agents: 'Agents', director: 'Flight Director', activity: 'Activity', history: 'History', settings: 'Settings' }
+const TITLES: Record<string, string> = { overview: 'Stats', board: 'Board', agents: 'Agents', director: 'Flight Director', activity: 'Activity', history: 'History', settings: 'Settings' }
 
 export default function App() {
   const now = useNow(1000)
@@ -181,7 +181,7 @@ export default function App() {
   const mission = ms.data && ms.data.id === missionId ? ms.data : null
   const readOnly = overview?.remote ?? false
   const offline = !!ms.error || !!ov.error
-  const view = route.view in TITLES ? route.view : 'overview'
+  const view = route.view in TITLES ? route.view : 'board'
   const global = view === 'history' || view === 'settings'
   useAlerts(mission)
 
@@ -220,7 +220,7 @@ export default function App() {
   const live = mission && (mission.status === 'active' || mission.status === 'paused')
 
   let body: React.ReactNode
-  if (view === 'history') body = <HistoryView overview={overview} now={now} onPick={(id) => go({ mission: id, view: 'overview' })} />
+  if (view === 'history') body = <HistoryView overview={overview} now={now} onPick={(id) => go({ mission: id, view: 'board' })} />
   else if (view === 'settings') body = <SettingsView overview={overview} onSaved={ov.refresh} />
   else if (!mission) body = missionId && !ms.error ? <div className="flex items-center gap-2 py-20 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading mission…</div> : <Welcome />
   else if (view === 'board') body = <Board mission={mission} now={now} onOpenTask={setTask} />
@@ -245,11 +245,10 @@ export default function App() {
             <Menu />
           </Button>
           {mission && !global ? (
-            <div className="flex min-w-0 items-center gap-2 text-sm">
+            <div className="flex min-w-0 items-center gap-3 text-sm">
               <span className="truncate font-medium">{mission.title}</span>
-              <Pill tone={mission.verdict.go ? 'success' : 'danger'}>{mission.verdict.go ? 'GO' : 'NO-GO'}</Pill>
               {mission.status !== 'active' && <Pill>{mission.status}</Pill>}
-              <span className="hidden font-mono text-xs text-muted-foreground sm:inline">T+{clock((mission.endedAt ?? now) - mission.startedAt)}</span>
+              <GoalProgress mission={mission} now={now} />
             </div>
           ) : (
             <span className="text-sm font-medium">{TITLES[view]}</span>
@@ -271,7 +270,7 @@ export default function App() {
         </header>
 
         <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 px-3 py-5 sm:px-6 sm:py-6">
-          {(global || mission) && <PageHeader title={TITLES[view]} />}
+          {global && <PageHeader title={TITLES[view]} />}
           <AnimatePresence mode="wait">
             <motion.div key={view + (global ? '' : missionId)} initial={{ y: 6 }} animate={{ y: 0 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
               {body}

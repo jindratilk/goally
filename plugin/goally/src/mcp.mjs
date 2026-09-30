@@ -38,7 +38,7 @@ export async function runMcp() {
   };
 
   const Task = z.object({
-    title: z.string().describe('Short card title, imperative'),
+    title: z.string().describe('Short task title, imperative'),
     description: z.string().optional().describe('What exactly to do and where'),
     acceptance: z.string().describe('Observable condition that makes this task done'),
     verify: z.string().describe('The smallest targeted check that proves it (exact test command, URL, or "manual: ...")'),
@@ -67,10 +67,10 @@ export async function runMcp() {
         'Open the board for the operator in the Cursor built-in browser (browser tool), never with the system `open` command.',
         `Parallel agent limit: ${r.maxParallelAgents}.`,
         '',
-        'Cards:',
+        'Tasks:',
         ...r.tasks.map((t) => `- [${t.id}] ${t.title}${t.depends?.length ? ` (after ${t.depends.join(', ')})` : ''}`),
         '',
-        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each card with goally_complete_task and evidence. Acknowledge every [FLIGHT DIRECTOR] or [OPERATOR] message with goally_ack.',
+        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each task with goally_complete_task and evidence. Acknowledge every [FLIGHT DIRECTOR] or [OPERATOR] message with goally_ack.',
         'Tell the operator the board URL now.',
       ];
       return text(lines.join('\n'));
@@ -80,8 +80,8 @@ export async function runMcp() {
   server.registerTool(
     'goally_update_task',
     {
-      title: 'Update task card',
-      description: 'Change a card status (todo, running, review, blocked, failed) or add a progress note. Use status "blocked" with a note when you need the operator. Use goally_complete_task to finish a card.',
+      title: 'Update task',
+      description: 'Change a task status (todo, running, review, blocked, failed) or add a progress note. Use status "blocked" with a note when you need the operator. Use goally_complete_task to finish a task.',
       inputSchema: {
         taskId: z.string(),
         status: z.enum(['todo', 'running', 'review', 'blocked', 'failed']).optional(),
@@ -97,8 +97,8 @@ export async function runMcp() {
   server.registerTool(
     'goally_add_task',
     {
-      title: 'Add task card',
-      description: 'Add a card discovered during the mission. Keep scope tight: only add work required by the goal.',
+      title: 'Add task',
+      description: 'Add a task discovered during the mission. Keep scope tight: only add work required by the goal.',
       inputSchema: Task.shape,
     },
     wrap(async (a) => {
@@ -112,7 +112,7 @@ export async function runMcp() {
     {
       title: 'Complete task with proof',
       description:
-        'Mark a card done. Requires evidence. A test counts only if the hooks saw it pass after the last file edit, so run the targeted test first. Other evidence: commit hash, URL, screenshot path.',
+        'Mark a task done. Requires evidence. A test counts only if the hooks saw it pass after the last file edit, so run the targeted test first. Other evidence: commit hash, URL, screenshot path.',
       inputSchema: {
         taskId: z.string(),
         evidence: z
@@ -138,7 +138,7 @@ export async function runMcp() {
     'goally_status',
     {
       title: 'Mission status',
-      description: 'Board summary: every card, GO/NO-GO verdict, blockers and unacknowledged messages. Call before reporting progress or claiming completion.',
+      description: 'Board summary: every task, GO/NO-GO verdict, blockers and unacknowledged messages. Call before reporting progress or claiming completion.',
       inputSchema: {},
     },
     wrap(async () => text((await rpc('status', { workspace: await workspace() })).text)),

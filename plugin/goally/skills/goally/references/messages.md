@@ -2,7 +2,7 @@
 
 Two voices can write to you during a mission:
 
-- `[FLIGHT DIRECTOR · M-3 · HIGH · CT-2] …` — the reviewer. It saw something in the record: a loop, a full build, drift, a card without proof. It includes what it saw and one instruction.
+- `[FLIGHT DIRECTOR · M-3 · HIGH · CT-2] …` — the reviewer. It saw something in the record: a loop, a full build, drift, a task without proof. It includes what it saw and one instruction.
 - `[OPERATOR · M-4] …` — the human, typed on the board or their phone.
 
 They arrive either as a new turn in this chat (Desktop Bridge) or appended to a tool result (hooks). Either way, they outrank whatever you were about to do next.

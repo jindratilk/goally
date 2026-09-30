@@ -4,12 +4,20 @@ const GIT_COMMIT_RE = /\bgit\s+(commit|push)\b/;
 const DEPLOY_RE = /\b(vercel\s+(deploy|--prod)|wrangler\s+deploy|fly\s+deploy|netlify\s+deploy|gh\s+pr\s+create)\b/;
 const LINT_RE = /\b(eslint|biome\s+check|ruff|tsc\s+--noEmit|prettier\s+--check)\b/;
 
-export function isFullBuild(command, patterns) {
+/** Built-in patterns for passive full-build detection (stats / Goal Director evidence). Not user-configurable. */
+export const FULL_BUILD_PATTERNS = [
+  'npm run build', 'pnpm build', 'pnpm run build', 'yarn build', 'bun run build',
+  'next build', 'vite build', 'turbo build', 'turbo run build', 'nx build',
+  'cargo build --release', 'xcodebuild', 'gradle build', './gradlew build',
+  'tsc -b', 'make all', 'docker build',
+];
+
+export function isFullBuild(command, patterns = FULL_BUILD_PATTERNS) {
   const c = ` ${String(command || '').toLowerCase()} `;
   return patterns.some((p) => p && c.includes(` ${p.toLowerCase()}`));
 }
 
-export function classifyCommand(command, fullBuildPatterns = []) {
+export function classifyCommand(command, fullBuildPatterns = FULL_BUILD_PATTERNS) {
   const c = String(command || '');
   if (TEST_RE.test(c)) return { kind: 'test', targeted: TARGETED_RE.test(` ${c}`) };
   if (isFullBuild(c, fullBuildPatterns)) return { kind: 'build', full: true };

@@ -1,11 +1,10 @@
-import { FileWarning } from 'lucide-react'
+import { Bot } from 'lucide-react'
 import { useState } from 'react'
 import type { Config, Mission } from '@/lib/api'
-import { ago, dur, shortPath } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { dur } from '@/lib/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dot, EmptyState, Pill, Segmented } from './shared'
+import { EmptyState, Pill, Segmented } from './shared'
 
 export function Agents({ mission, config, now, onOpenTask }: { mission: Mission; config: Config; now: number; onOpenTask: (id: string) => void }) {
   const [filter, setFilter] = useState<'all' | 'running' | 'completed' | 'failed'>('all')
@@ -13,33 +12,13 @@ export function Agents({ mission, config, now, onOpenTask }: { mission: Mission;
   const count = (f: typeof filter) => all.filter((a) => f === 'all' || (f === 'failed' ? a.status === 'error' || a.status === 'aborted' : a.status === f)).length
   const rows = all.filter((a) => filter === 'all' || (filter === 'failed' ? a.status === 'error' || a.status === 'aborted' : a.status === filter))
   const running = all.filter((a) => a.status === 'running').length
-  const collided = new Set(mission.collisions.map((c) => c.path))
-  const files = [...mission.files].sort((a, b) => Number(collided.has(b.path)) - Number(collided.has(a.path)) || b.count - a.count)
-  const label = (id: string) => (/^CT-\d+$/.test(id) ? id : id === 'main' ? 'Main' : mission.agents.find((a) => a.id === id)?.taskId ?? id.slice(0, 6))
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Manager</CardTitle>
-          <CardDescription>The chat that owns the mission and receives Director messages.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <span className="flex items-center gap-2">
-            <Dot tone={mission.main.status === 'working' ? 'success' : 'neutral'} pulse={mission.main.status === 'working'} />
-            <span className="capitalize">{mission.main.status}</span>
-          </span>
-          <span className="text-muted-foreground">Last active {ago(mission.main.lastActivityAt, now)}</span>
-          <span className="text-muted-foreground">{mission.main.toolCalls} tool calls</span>
-          <span className="text-muted-foreground">{mission.main.stops} turns</span>
-          <span className="font-mono text-xs text-muted-foreground">{mission.conversationId ?? 'not bound'}</span>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Subagents</CardTitle>
+            <CardTitle>Agents</CardTitle>
             <CardDescription>
               {running} of {config.maxParallelAgents} slots in use
             </CardDescription>
@@ -57,12 +36,12 @@ export function Agents({ mission, config, now, onOpenTask }: { mission: Mission;
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <EmptyState icon={FileWarning} title="No agents" />
+            <EmptyState icon={Bot} title="No agents" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Card</TableHead>
+                  <TableHead>Task</TableHead>
                   <TableHead>Task</TableHead>
                   <TableHead className="hidden md:table-cell">Model</TableHead>
                   <TableHead>Status</TableHead>
@@ -93,36 +72,6 @@ export function Agents({ mission, config, now, onOpenTask }: { mission: Mission;
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Files</CardTitle>
-          <CardDescription>{mission.collisions.length ? `${mission.collisions.length} edited by more than one card` : 'No collisions'}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {files.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No edits yet.</p>
-          ) : (
-            <ul className="divide-y">
-              {files.slice(0, 20).map((f) => (
-                <li key={f.path} className="flex items-center gap-3 py-2">
-                  <span className={cn('min-w-0 flex-1 truncate font-mono text-xs', collided.has(f.path) && 'text-danger')} title={f.path}>
-                    {shortPath(f.path, mission.workspace)}
-                  </span>
-                  <span className="flex gap-1">
-                    {f.agents.map((a) => (
-                      <Pill key={a} tone={collided.has(f.path) ? 'danger' : 'neutral'}>
-                        {label(a)}
-                      </Pill>
-                    ))}
-                  </span>
-                  <span className="w-8 text-right text-xs text-muted-foreground tabnum">×{f.count}</span>
-                </li>
-              ))}
-            </ul>
           )}
         </CardContent>
       </Card>

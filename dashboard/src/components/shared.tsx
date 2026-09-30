@@ -30,12 +30,12 @@ const TONE_DOT: Record<Tone, string> = {
 }
 
 export const TASK_META: Record<TaskStatus, { label: string; tone: Tone }> = {
-  todo: { label: 'Queued', tone: 'neutral' },
-  running: { label: 'Running', tone: 'active' },
-  review: { label: 'Needs proof', tone: 'warning' },
+  todo: { label: 'To-do', tone: 'neutral' },
+  running: { label: 'In progress', tone: 'active' },
+  review: { label: 'Testing', tone: 'warning' },
   blocked: { label: 'Blocked', tone: 'danger' },
   failed: { label: 'Failed', tone: 'danger' },
-  done: { label: 'Proven', tone: 'success' },
+  done: { label: 'Launched', tone: 'success' },
 }
 
 export function Pill({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

@@ -82,7 +82,7 @@ function evaluateProof(state, task, evidence) {
     return { accepted: false, reason: 'Files changed after the last passing test. Re-run the targeted test, then complete again.' };
   }
   if (hardRef) return { accepted: true, reason: 'Verifiable reference provided' };
-  if (/manual|none/i.test(task.verify) && kinds.has('note')) return { accepted: true, reason: 'Manual verification per card' };
+  if (/manual|none/i.test(task.verify) && kinds.has('note')) return { accepted: true, reason: 'Manual verification per task' };
   return { accepted: false, reason: 'Evidence must include a passing test, a commit, a URL or a screenshot path.' };
 }
 

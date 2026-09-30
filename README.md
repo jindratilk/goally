@@ -1,6 +1,6 @@
 # Goally
 
-Mission control for big agent tasks in Cursor. You hand the agent a large task; it audits it into cards, launches parallel subagents within your limit, and a live board shows what is really happening. A card only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). Grok Build runs in the background as the Flight Director, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
+Mission control for big agent tasks in Cursor. You hand the agent a large task; it audits it into tasks, launches parallel subagents within your limit, and a live board shows what is really happening. A task only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). Grok Build runs in the background as the Flight Director, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
 
 ## Install
 

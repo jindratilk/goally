@@ -9,11 +9,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Dot, Segmented, TASK_META, TaskBadge } from './shared'
 
 const COLUMNS: { key: string; statuses: TaskStatus[]; label: string }[] = [
-  { key: 'todo', statuses: ['todo'], label: 'Queued' },
-  { key: 'running', statuses: ['running'], label: 'Running' },
-  { key: 'review', statuses: ['review'], label: 'Needs proof' },
-  { key: 'blocked', statuses: ['blocked', 'failed'], label: 'Blocked' },
-  { key: 'done', statuses: ['done'], label: 'Proven' },
+  { key: 'todo', statuses: ['todo'], label: 'To-do' },
+  { key: 'progress', statuses: ['running', 'blocked', 'failed'], label: 'In progress' },
+  { key: 'testing', statuses: ['review'], label: 'Testing' },
+  { key: 'launched', statuses: ['done'], label: 'Launched' },
 ]
 
 export function agentsFor(task: Task, agents: Agent[]) {
@@ -48,6 +47,8 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
           <span className="truncate">
             {dur(now - live.startedAt)} · {live.liveToolCalls} tools{live.lastTool ? ` · ${live.lastTool}` : ''}
           </span>
+        ) : task.status === 'blocked' || task.status === 'failed' ? (
+          <span className="truncate text-danger">{task.status === 'failed' ? 'Failed' : 'Blocked'}{task.notes.at(-1) ? ` · ${task.notes.at(-1)!.text}` : ''}</span>
         ) : task.status === 'review' && task.proof && !task.proof.ok ? (
           <span className="truncate text-warning">Proof rejected</span>
         ) : task.status === 'todo' && waiting.length ? (
@@ -65,7 +66,7 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
 export function Board({ mission, now, onOpenTask }: { mission: Mission; now: number; onOpenTask: (id: string) => void }) {
   const [q, setQ] = useState('')
   const [lane, setLane] = useState('all')
-  const [tab, setTab] = useState('running')
+  const [tab, setTab] = useState('progress')
   const lanes = useMemo(() => [...new Set(mission.tasks.map((t) => t.lane).filter(Boolean))], [mission.tasks])
   const tasks = mission.tasks.filter((t) => (lane === 'all' || t.lane === lane) && (!q || `${t.id} ${t.title} ${t.verify}`.toLowerCase().includes(q.toLowerCase())))
   const byCol = (c: (typeof COLUMNS)[number]) => tasks.filter((t) => c.statuses.includes(t.status))
@@ -75,7 +76,7 @@ export function Board({ mission, now, onOpenTask }: { mission: Mission; now: num
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter cards" className="h-8 bg-card pl-8" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter tasks" className="h-8 bg-card pl-8" />
         </div>
         {lanes.length > 1 && <Segmented value={lane} onChange={setLane} options={[{ value: 'all', label: 'All lanes' }, ...lanes.map((l) => ({ value: l, label: l }))]} />}
       </div>
@@ -85,7 +86,7 @@ export function Board({ mission, now, onOpenTask }: { mission: Mission; now: num
       </div>
 
       <div className="-mx-3 overflow-x-auto px-3 sm:-mx-6 sm:px-6 xl:mx-0 xl:overflow-visible xl:px-0">
-      <div className="grid gap-3 md:min-w-[900px] md:grid-cols-5 xl:min-w-0">
+      <div className="grid gap-3 md:min-w-[720px] md:grid-cols-4 xl:min-w-0">
         {COLUMNS.map((c) => {
           const list = byCol(c)
           return (

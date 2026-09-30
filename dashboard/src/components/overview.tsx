@@ -27,7 +27,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Kpi icon={ShieldCheck} label="Proven" value={`${v.done}/${v.total}`} tone={v.go ? 'success' : undefined}>
+        <Kpi icon={ShieldCheck} label="Launched" value={`${v.done}/${v.total}`} tone={v.go ? 'success' : undefined}>
           <Progress value={Math.round(v.coverage * 100)} className="[&_[data-slot=progress-indicator]]:bg-success" />
         </Kpi>
         <Kpi icon={Bot} label="Agents running" value={`${running}/${config.maxParallelAgents}`} sub={`${s.agentsTotal} total · peak ${s.peakParallel}`} />
@@ -39,7 +39,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Go / No-go</CardTitle>
-            <CardDescription>A card is GO only with proof after its last edit.</CardDescription>
+            <CardDescription>A task is GO only with proof after its last edit.</CardDescription>
             <CardAction>
               <Pill tone={v.go ? 'success' : 'danger'} className="h-6 px-2.5 text-xs">
                 {v.go ? 'GO' : 'NO-GO'}

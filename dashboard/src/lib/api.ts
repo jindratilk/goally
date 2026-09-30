@@ -208,7 +208,7 @@ export interface Route { mission: string | null; view: string }
 
 function readRoute(): Route {
   const m = /^#\/(?:m\/([a-z0-9-]+))?\/?([a-z]+)?/i.exec(location.hash)
-  return { mission: m?.[1] ?? null, view: m?.[2] ?? 'overview' }
+  return { mission: m?.[1] ?? null, view: m?.[2] ?? 'board' }
 }
 
 export function useHashRoute() {

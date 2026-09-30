@@ -13,18 +13,8 @@ export const DEFAULTS = {
     maxTurns: 12,
     timeoutSec: 300,
   },
-  // observe: only show on board · message: write to the manager · block: also block commands
+  // observe: findings only on the board · message: also write into the manager chat
   intervention: 'message',
-  fullBuild: {
-    policy: 'warn', // allow | warn | block
-    patterns: [
-      'npm run build', 'pnpm build', 'pnpm run build', 'yarn build', 'bun run build',
-      'next build', 'vite build', 'turbo build', 'turbo run build', 'nx build',
-      'cargo build --release', 'xcodebuild', 'gradle build', './gradlew build',
-      'tsc -b', 'make all', 'docker build',
-    ],
-  },
-  stopLoopLimit: 3,
   delivery: {
     bridge: 'auto', // auto | off
     forceOnHigh: true,
@@ -70,6 +60,9 @@ function clampInt(v, min, max, dflt) {
 
 export function sanitizeConfig(c) {
   const d = DEFAULTS;
+  // Legacy stored value 'block' meant "message + deny"; map to message.
+  let intervention = c.intervention;
+  if (intervention === 'block') intervention = 'message';
   return {
     maxParallelAgents: clampInt(c.maxParallelAgents, 1, 32, d.maxParallelAgents),
     supervisor: {
@@ -81,14 +74,7 @@ export function sanitizeConfig(c) {
       maxTurns: clampInt(c.supervisor?.maxTurns, 1, 50, d.supervisor.maxTurns),
       timeoutSec: clampInt(c.supervisor?.timeoutSec, 30, 1800, d.supervisor.timeoutSec),
     },
-    intervention: ['observe', 'message', 'block'].includes(c.intervention) ? c.intervention : d.intervention,
-    fullBuild: {
-      policy: ['allow', 'warn', 'block'].includes(c.fullBuild?.policy) ? c.fullBuild.policy : d.fullBuild.policy,
-      patterns: Array.isArray(c.fullBuild?.patterns)
-        ? c.fullBuild.patterns.map(String).map((s) => s.trim()).filter(Boolean).slice(0, 60)
-        : d.fullBuild.patterns,
-    },
-    stopLoopLimit: clampInt(c.stopLoopLimit, 0, 20, d.stopLoopLimit),
+    intervention: ['observe', 'message'].includes(intervention) ? intervention : d.intervention,
     delivery: {
       bridge: ['auto', 'off'].includes(c.delivery?.bridge) ? c.delivery.bridge : d.delivery.bridge,
       forceOnHigh: Boolean(c.delivery?.forceOnHigh ?? true),
