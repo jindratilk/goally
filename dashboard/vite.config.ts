@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
-  build: { outDir: '../plugin/control-tower/dashboard', emptyOutDir: true, chunkSizeWarningLimit: 1200 },
+  build: { outDir: '../plugin/goally/dashboard', emptyOutDir: true, chunkSizeWarningLimit: 1200 },
   server: {
     port: 5177,
     proxy: { '/api': 'http://127.0.0.1:4777' },

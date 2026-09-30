@@ -153,7 +153,7 @@ export async function post<T = unknown>(path: string, body: unknown = {}): Promi
   const res = await fetch(path, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'content-type': 'application/json', 'x-tower-client': 'dashboard' },
+    headers: { 'content-type': 'application/json', 'x-goally-client': 'dashboard' },
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))

@@ -1,4 +1,4 @@
-# Parallel Agent Control Tower – produktové zadání
+# Goally – produktové zadání
 
 Téma hackathonu: Ideas for developer / platform tooling
 
@@ -13,7 +13,7 @@ Téma hackathonu: Ideas for developer / platform tooling
 
 ## Vize
 
-Control Tower je celá harness kolem hlavního agenta, ne jen dashboard. Skládá se ze skillu, hooků a MCP a je postavená pro Cursor hackathon. Pain pointy, ze kterých vychází, jsou vidět v mých Codex sessions. Při dalším rozpracování se proto vždy vrací do nich.
+Goally je celá harness kolem hlavního agenta, ne jen dashboard. Skládá se ze skillu, hooků a MCP a je postavená pro Cursor hackathon. Pain pointy, ze kterých vychází, jsou vidět v mých Codex sessions. Při dalším rozpracování se proto vždy vrací do nich.
 
 Používání je jednoduché. Označím skill a zadám velký, komplexní úkol. Agent nejdřív udělá audit: projde všechny úkoly, které je potřeba udělat, a rozdělí je. Potom spustí dashboard a ten je od té chvíle jeho společný pohled s uživatelem. Agent komunikuje s dashboardem a jak (hooks, MCP, nebo obojí), je technický detail, který vyřešíme později.
 
@@ -49,7 +49,7 @@ Výsledný pocit: zadám velký úkol, vidím jasný board s paralelní prací a
 - **Motion** (dříve Framer Motion) pro mikrointerakce, **Recharts** přes shadcn Charts pro grafy, **lucide** pro ikony a **Sonner** pro notifikace o zásazích.
 - **Vite + React + Tailwind v4.** Dashboard se sestaví na statické soubory a servíruje ho daemon, takže nepotřebuje žádný server navíc.
 
-### Nastavení (v dashboardu, uložené v `~/.control-tower/config.json`)
+### Nastavení (v dashboardu, uložené v `~/.goally/config.json`)
 
 - **Maximální počet paralelních agentů.** Hook `subagentStart` odmítne dalšího subagenta nad limit se zprávou „počkej, běží N agentů“.
 - **Dozor:** zapnuto nebo vypnuto, interval (výchozí 10 min) a model/úsilí Grok.
@@ -83,17 +83,17 @@ Výsledný pocit: zadám velký úkol, vidím jasný board s paralelní prací a
 
 - Celé to bude jeden **Cursor Plugin** (`.cursor-plugin/plugin.json`), protože jen tento formát umí zabalit dohromady skill, hooky, MCP server i příkazy.
 - Otevřený standard Agent Plugins hooky nepodporuje, proto ho nepoužijeme.
-- Na hackathon se plugin nainstaluje lokálně do `~/.cursor/plugins/local/control-tower`. Potom se udělá „Reload Window“.
+- Na hackathon se plugin nainstaluje lokálně do `~/.cursor/plugins/local/goally`. Potom se udělá „Reload Window“.
 - Později ho lze poslat do Cursor Marketplace. Plugin musí být open source a Cursor ho ručně zkontroluje.
 
 ```
-control-tower/
+goally/
 ├── .cursor-plugin/plugin.json
-├── skills/control-tower/SKILL.md     # audit → plán → spuštění boardu
-├── commands/tower-setup.md           # onboarding
+├── skills/goally/SKILL.md     # audit → plán → spuštění boardu
+├── commands/goally-setup.md           # onboarding
 ├── hooks/hooks.json                  # události z Cursoru
 ├── mcp.json                          # MCP server (stdio)
-└── bin/tower                         # jeden Node program: daemon, hook, mcp
+└── bin/goally                         # jeden Node program: daemon, hook, mcp
 ```
 
 ### Architektura
@@ -102,7 +102,7 @@ control-tower/
 Cursor agent + subagenti
    │ hooks (JSON)        │ MCP (nástroje)
    ▼                     ▼
-tower daemon (127.0.0.1:4777) ── events.jsonl
+goally daemon (127.0.0.1:4777) ── events.jsonl
    ├─ board API + dashboard (polling 2 s)
    ├─ supervisor: každých 10 min spustí grok -p
    └─ fronta zásahů → doručí je další hook
@@ -110,13 +110,13 @@ tower daemon (127.0.0.1:4777) ── events.jsonl
 Cloudflare Tunnel + Access → dashboard na telefonu
 ```
 
-- **Jeden program, tři role:** `tower daemon`, `tower hook <event>`, `tower mcp`. Je to jeden Node balíček, bez databázového serveru.
+- **Jeden program, tři role:** `goally daemon`, `goally hook <event>`, `goally mcp`. Je to jeden Node balíček, bez databázového serveru.
 - **Úložiště:** append-only `events.jsonl` na jeden běh. Stav se po startu dopočítá v paměti, takže je potřeba nejméně závislostí.
 - **Daemon** se spustí sám při prvním volání MCP nebo hooku. Zámek v souboru zajistí, že běží jen jeden, i když je otevřeno víc oken Cursoru.
 
 ### Skill (co agent dělá)
 
-- Na `/control-tower` s velkým úkolem agent nejdřív udělá audit. Zadání rozdělí na karty s ID, vlastníkem, závislostmi, akceptačním kritériem a cíleným testem.
+- Na `/goally` s velkým úkolem agent nejdřív udělá audit. Zadání rozdělí na karty s ID, vlastníkem, závislostmi, akceptačním kritériem a cíleným testem.
 - Plán pošle přes MCP, dostane odkaz na dashboard a pošle ho uživateli.
 - Každý subagent dostane v zadání štítek karty, např. `[CT-3]`. Hooky tak spárují subagenta s kartou, protože `subagentStop` nevrací ID subagenta, ale vrací text zadání.
 - Kartu smí agent označit jako hotovou jen s důkazem (test, commit, URL). Plný build jen tehdy, když ho karta výslovně vyžaduje.
@@ -125,13 +125,13 @@ Cloudflare Tunnel + Access → dashboard na telefonu
 
 Agent jím zapisuje to, co hooky nevidí: plán, záměr a důkazy.
 
-- `tower_start_run`: uloží plán z auditu a vrátí URL dashboardu.
-- `tower_update_task`: změní stav karty nebo přidá poznámku.
-- `tower_complete_task`: označí kartu jako hotovou s důkazem. Daemon ověří, že po poslední úpravě souborů proběhl zelený test.
-- `tower_status`: vrátí, co zbývá a co blokuje, včetně nálezů dozoru.
-- `tower_resume`: vrátí pokračovací brief po pádu nebo v novém chatu.
-- `tower_ack`: manažer potvrdí zprávu od dozoru nebo od tebe (přijato / odmítnuto s důvodem / vyřešeno).
-- Bonus: `tower_status` vrátí board i jako **MCP App**, takže se živý board zobrazí přímo v chatu Cursoru.
+- `goally_start_run`: uloží plán z auditu a vrátí URL dashboardu.
+- `goally_update_task`: změní stav karty nebo přidá poznámku.
+- `goally_complete_task`: označí kartu jako hotovou s důkazem. Daemon ověří, že po poslední úpravě souborů proběhl zelený test.
+- `goally_status`: vrátí, co zbývá a co blokuje, včetně nálezů dozoru.
+- `goally_resume`: vrátí pokračovací brief po pádu nebo v novém chatu.
+- `goally_ack`: manažer potvrdí zprávu od dozoru nebo od tebe (přijato / odmítnuto s důvodem / vyřešeno).
+- Bonus: `goally_status` vrátí board i jako **MCP App**, takže se živý board zobrazí přímo v chatu Cursoru.
 
 ### Hooky (Cursor → board, a zpět zásahy)
 
@@ -149,7 +149,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 ### Grok Build jako dozor
 
 - Použije se oficiální `grok` CLI, tedy open-source harness z `github.com/xai-org/grok-build`. Nainstaluje se skriptem z x.ai, nebo se sestaví ze zdroje.
-- **Vlastní předplatné:** uživatel se jednou přihlásí příkazem `grok login` (SuperGrok nebo X Premium+). Headless běhy pak použijí uložené přihlášení. Alternativou je `XAI_API_KEY`. Control Tower přihlašovací údaje nikdy nečte, jen spouští `grok`.
+- **Vlastní předplatné:** uživatel se jednou přihlásí příkazem `grok login` (SuperGrok nebo X Premium+). Headless běhy pak použijí uložené přihlášení. Alternativou je `XAI_API_KEY`. Goally přihlašovací údaje nikdy nečte, jen spouští `grok`.
 - Každých 10 minut, a navíc po každém `subagentStop` a `stop`, daemon připraví snapshot. Obsahuje zadání, board, poslední příkazy, `git diff --stat` a cesty k transcriptům.
 - Snapshot se spustí příkazem `grok -p --prompt-file snapshot.md --output-format json --tools read_file,grep,list_dir --resume <session>`. Dozor tak smí jen číst a díky `--resume` si pamatuje předchozí kontroly.
 - Grok vrátí JSON s nálezy typu `overengineering`, `stuck`, `full-build`, `off-scope` nebo `no-proof`, se závažností a doporučeným krokem.
@@ -159,9 +159,9 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 
 ### Jak dozor píše do hlavní Cursor session (manažera)
 
-- **Píše jen manažerovi.** Hlavní session je ta, která zavolala `tower_start_run`, a daemon si uloží její `conversation_id`. Subagentům dozor nepíše. Instrukci jim předá manažer tak, že subagenta pokračuje s novým zadáním, zastaví ho nebo spustí nového.
+- **Píše jen manažerovi.** Hlavní session je ta, která zavolala `goally_start_run`, a daemon si uloží její `conversation_id`. Subagentům dozor nepíše. Instrukci jim předá manažer tak, že subagenta pokračuje s novým zadáním, zastaví ho nebo spustí nového.
 - **Schránka (inbox):** každá zpráva dozoru, a také tvoje zpráva z dashboardu nebo z telefonu, se uloží do schránky manažera s ID, závažností a doporučeným krokem. Na boardu je vidět její stav: čeká, doručeno, potvrzeno, vyřešeno.
-- **Formát zprávy:** `[FLIGHT DIRECTOR · F-12 · HIGH · CT-3] Plný build už potřetí. Spusť jen test pro src/export. Potvrď přes tower_ack.`
+- **Formát zprávy:** `[FLIGHT DIRECTOR · F-12 · HIGH · CT-3] Plný build už potřetí. Spusť jen test pro src/export. Potvrď přes goally_ack.`
 - **Hlavní cesta: Cursor Desktop Bridge.** Je to skrytá funkce přímo v Cursoru a v tvé verzi 3.22.12 je zabudovaná. Příkaz `cursor desktop send <thread-id> "zpráva"` vloží zprávu do existující session kdykoli, stejně jako kdybys ji napsal ty. `cursor desktop ls --json` vypíše session s ID, názvem, stavem a oknem.
   - **Výchozí chování:** když manažer zrovna pracuje, zpráva se zařadí do fronty a odešle se hned po jeho aktuálním tahu. Když manažer stojí, spustí se nový tah okamžitě.
   - **Kritický nález:** `--force` přeruší aktuální tah a zprávu odešle hned. Používá se jen při závažnosti HIGH, například při zbytečném plném buildu nebo při práci mimo zadání.
@@ -173,7 +173,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
   1. **Manažer pracuje:** další hook v jeho session (`postToolUse`) přidá zprávu přes `additional_context`.
   2. **Kritický nález:** `preToolUse` zablokuje konkrétní příkaz a zpráva dorazí jako `agent_message`.
   3. **Manažer chce skončit tah:** hook `stop` vrátí `followup_message` a Cursor ji sám odešle do stejné session.
-- **Potvrzení:** manažer musí zprávu potvrdit přes MCP `tower_ack` (přijato / odmítnuto s důvodem / vyřešeno). Nepotvrzená zpráva se po 5 minutách pošle znovu a dozor ji uvidí v příští kontrole.
+- **Potvrzení:** manažer musí zprávu potvrdit přes MCP `goally_ack` (přijato / odmítnuto s důvodem / vyřešeno). Nepotvrzená zpráva se po 5 minutách pošle znovu a dozor ji uvidí v příští kontrole.
 - **Proti zahlcení:** stejný nález se znovu nepošle, dokud se situace nezmění. Nejvýše jedna zpráva s `--force` za 10 minut.
 - **Stejnou cestou píšeš manažerovi i ty** z dashboardu nebo z telefonu: napíšeš zprávu, daemon ji pošle přes `cursor desktop send`.
 - **Spike ověří:** zapnutí Desktop Bridge u tebe, shodu thread ID s `conversation_id` a to, zda hooky nástrojů subagenta nesou ID manažera, nebo subagenta.
@@ -181,7 +181,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 ### Online dashboard na telefonu: Cloudflare Tunnel, ne Vercel
 
 - **Vercel** by znamenal přesunout stav do cloudové databáze a synchronizovat ho z lokálního počítače. To jsou dva systémy navíc. Nepoužijeme ho.
-- **Rozhodnuto: Cloudflare Quick Tunnel zdarma.** `tower tunnel start` (nebo Settings → Remote access) spustí `cloudflared tunnel --url http://127.0.0.1:4777` a adresa `*.trycloudflare.com` se vytvoří sama, bez účtu a domény.
+- **Rozhodnuto: Cloudflare Quick Tunnel zdarma.** `goally tunnel start` (nebo Settings → Remote access) spustí `cloudflared tunnel --url http://127.0.0.1:4777` a adresa `*.trycloudflare.com` se vytvoří sama, bez účtu a domény.
 - Quick Tunnel nemá přihlášení, proto odkaz nese soukromý klíč. Po prvním otevření ho prohlížeč uloží jako cookie a z adresy zmizí. Bez klíče tunel vrací 401, klíč jde kdykoli vyměnit („New key“).
 - Pohled přes tunel je jen ke čtení. Adresa se mění při restartu tunelu. Quick Tunnel nepodporuje SSE, proto dashboard používá polling.
 - Named Tunnel + Cloudflare Access s vlastní doménou zůstává jako pozdější upgrade.
@@ -189,15 +189,15 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 ### Onboarding
 
 1. Nainstalovat plugin (na hackathonu zkopírovat do `~/.cursor/plugins/local/`) a udělat „Reload Window“.
-2. Spustit `/tower-setup`. Průvodce zkontroluje Node, vytvoří `~/.control-tower/` s konfigurací a lokálním tokenem a spustí daemon.
+2. Spustit `/goally-setup`. Průvodce zkontroluje Node, vytvoří `~/.goally/` s konfigurací a lokálním tokenem a spustí daemon.
 3. Grok: najde `grok`, nebo nabídne instalaci. Pak spustí `grok login` v prohlížeči a otestuje jeden headless běh.
-4. Telefon (volitelné): `tower tunnel start` a naskenovat QR kód.
-5. `tower doctor` na konci vše ověří: hook dorazil, MCP je připojené, Grok odpovídá, tunel je dostupný.
+4. Telefon (volitelné): `goally tunnel start` a naskenovat QR kód.
+5. `goally doctor` na konci vše ověří: hook dorazil, MCP je připojené, Grok odpovídá, tunel je dostupný.
 
 ### Zabezpečení (jednoduše, ale podle standardu)
 
 - Daemon poslouchá jen na `127.0.0.1`. Ven se dostane výhradně přes Quick Tunnel se soukromým klíčem, jen ke čtení.
-- Hooky a MCP se k daemonu hlásí náhodným tokenem ze souboru `~/.control-tower/token` (práva `0600`). Požadavky s cizím `Origin` se odmítnou, aby do daemonu nemohla zapisovat cizí webová stránka.
+- Hooky a MCP se k daemonu hlásí náhodným tokenem ze souboru `~/.goally/token` (práva `0600`). Požadavky s cizím `Origin` se odmítnou, aby do daemonu nemohla zapisovat cizí webová stránka.
 - Na telefonu je dashboard jen ke čtení. Zásahy a změny jdou jen lokálně.
 - Grok dozor má jen nástroje pro čtení, bez shellu a bez úprav souborů.
 - Před uložením a před odesláním Grokovi se z výstupů příkazů odstraní tajné údaje (klíče, tokeny, `.env` hodnoty) a výstupy se zkrátí.
@@ -218,7 +218,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 
 - Jazyk UI: **rozhodnuto, angličtina.**
 - Tunel na telefon: **rozhodnuto, Quick Tunnel zdarma s automatickou adresou.**
-- Název: zatím pracovně „Control Tower“, finální název vybereš.
+- Název: Goally (rozhodnuto).
 
 ## Další kroky (po zelené)
 

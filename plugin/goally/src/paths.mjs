@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const HOME = process.env.TOWER_HOME || path.join(os.homedir(), '.control-tower');
-export const PORT = Number(process.env.TOWER_PORT || 4777);
+export const HOME = process.env.GOALLY_HOME || path.join(os.homedir(), '.goally');
+export const PORT = Number(process.env.GOALLY_PORT || 4777);
 export const HOST = '127.0.0.1';
 export const LOCAL_URL = `http://${HOST}:${PORT}`;
 

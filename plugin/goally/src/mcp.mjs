@@ -8,12 +8,12 @@ const text = (t) => ({ content: [{ type: 'text', text: t }] });
 const fail = (t) => ({ content: [{ type: 'text', text: t }], isError: true });
 
 export async function runMcp() {
-  const server = new McpServer({ name: 'control-tower', version: '0.1.0' });
+  const server = new McpServer({ name: 'goally', version: '0.1.0' });
   let rootsCache = null;
 
   async function workspace(given) {
     if (given) return given;
-    if (process.env.TOWER_WORKSPACE) return process.env.TOWER_WORKSPACE;
+    if (process.env.GOALLY_WORKSPACE) return process.env.GOALLY_WORKSPACE;
     try {
       if (!rootsCache) {
         const r = await server.server.listRoots();
@@ -25,7 +25,7 @@ export async function runMcp() {
   }
 
   async function rpc(method, body) {
-    if (!(await ensureDaemon())) throw new Error('Control Tower daemon did not start. Run `tower doctor`.');
+    if (!(await ensureDaemon())) throw new Error('Goally daemon did not start. Run `goally doctor`.');
     return call('POST', `/api/rpc/${method}`, body, { timeoutMs: 10000 });
   }
 
@@ -33,7 +33,7 @@ export async function runMcp() {
     try {
       return await fn(args);
     } catch (e) {
-      return fail(`Control Tower: ${e.message}`);
+      return fail(`Goally: ${e.message}`);
     }
   };
 
@@ -47,11 +47,11 @@ export async function runMcp() {
   });
 
   server.registerTool(
-    'tower_start_run',
+    'goally_start_run',
     {
       title: 'Start mission',
       description:
-        'Start a Control Tower mission after auditing a large request. Registers the task board (IDs CT-1..n in the given order), returns the live dashboard URL and binds this chat as the mission manager. Call once per mission, before launching subagents.',
+        'Start a Goally mission after auditing a large request. Registers the task board (IDs CT-1..n in the given order), returns the live dashboard URL and binds this chat as the mission manager. Call once per mission, before launching subagents.',
       inputSchema: {
         title: z.string().describe('Mission name, max ~8 words'),
         goal: z.string().describe("The operator's request, verbatim or faithfully summarized, including constraints and definition of done"),
@@ -70,7 +70,7 @@ export async function runMcp() {
         'Cards:',
         ...r.tasks.map((t) => `- [${t.id}] ${t.title}${t.depends?.length ? ` (after ${t.depends.join(', ')})` : ''}`),
         '',
-        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each card with tower_complete_task and evidence. Acknowledge every [FLIGHT DIRECTOR] or [OPERATOR] message with tower_ack.',
+        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each card with goally_complete_task and evidence. Acknowledge every [FLIGHT DIRECTOR] or [OPERATOR] message with goally_ack.',
         'Tell the operator the board URL now.',
       ];
       return text(lines.join('\n'));
@@ -78,10 +78,10 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_update_task',
+    'goally_update_task',
     {
       title: 'Update task card',
-      description: 'Change a card status (todo, running, review, blocked, failed) or add a progress note. Use status "blocked" with a note when you need the operator. Use tower_complete_task to finish a card.',
+      description: 'Change a card status (todo, running, review, blocked, failed) or add a progress note. Use status "blocked" with a note when you need the operator. Use goally_complete_task to finish a card.',
       inputSchema: {
         taskId: z.string(),
         status: z.enum(['todo', 'running', 'review', 'blocked', 'failed']).optional(),
@@ -95,7 +95,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_add_task',
+    'goally_add_task',
     {
       title: 'Add task card',
       description: 'Add a card discovered during the mission. Keep scope tight: only add work required by the goal.',
@@ -108,7 +108,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_complete_task',
+    'goally_complete_task',
     {
       title: 'Complete task with proof',
       description:
@@ -135,7 +135,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_status',
+    'goally_status',
     {
       title: 'Mission status',
       description: 'Board summary: every card, GO/NO-GO verdict, blockers and unacknowledged messages. Call before reporting progress or claiming completion.',
@@ -145,7 +145,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_resume',
+    'goally_resume',
     {
       title: 'Resume mission',
       description: 'Continuation brief for a mission after a crash, compaction or new chat. Returns what is proven, what remains and recent errors.',
@@ -155,7 +155,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_ack',
+    'goally_ack',
     {
       title: 'Acknowledge message',
       description: 'Acknowledge a [FLIGHT DIRECTOR] or [OPERATOR] message: accepted (will do), rejected (explain why in note), resolved (done).',
@@ -172,7 +172,7 @@ export async function runMcp() {
   );
 
   server.registerTool(
-    'tower_finish',
+    'goally_finish',
     {
       title: 'Finish mission',
       description: 'Close the mission. Succeeds only when the GO/NO-GO poll is all GO; otherwise returns the blockers.',

@@ -11,4 +11,4 @@ if [ ! -x "$NODE" ]; then
   esac
   exit 0
 fi
-exec "$NODE" "$DIR/tower.mjs" hook "$1"
+exec "$NODE" "$DIR/goally.mjs" hook "$1"

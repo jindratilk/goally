@@ -13,7 +13,7 @@ async function main() {
         await startDaemon();
       } catch (e) {
         if (e.code === 'EADDRINUSE') {
-          console.error(`Control Tower already running on ${LOCAL_URL}`);
+          console.error(`Goally already running on ${LOCAL_URL}`);
           process.exit(0);
         }
         throw e;
@@ -33,7 +33,7 @@ async function main() {
     case 'start': {
       const { ensureDaemon } = await import('../src/client.mjs');
       const ok = await ensureDaemon();
-      console.log(ok ? `Control Tower running · ${LOCAL_URL}` : 'Daemon failed to start. See ~/.control-tower/logs/daemon.log');
+      console.log(ok ? `Goally running · ${LOCAL_URL}` : 'Daemon failed to start. See ~/.goally/logs/daemon.log');
       process.exit(ok ? 0 : 1);
     }
     case 'stop': {
@@ -51,7 +51,7 @@ async function main() {
       const { ensureDaemon } = await import('../src/client.mjs');
       await ensureDaemon();
       if (rest.includes('--system')) spawn('open', [LOCAL_URL], { stdio: 'ignore', detached: true }).unref();
-      console.log(`${LOCAL_URL}  · open it in the Cursor browser (system browser: tower open --system)`);
+      console.log(`${LOCAL_URL}  · open it in the Cursor browser (system browser: goally open --system)`);
       return;
     }
     case 'status': {
@@ -80,7 +80,7 @@ async function main() {
       const r = await call('POST', '/api/rpc/status', { workspace: process.cwd() });
       const res = await fetch(`${LOCAL_URL}/api/missions/${r.missionId}/message`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-tower-client': 'dashboard' },
+        headers: { 'content-type': 'application/json', 'x-goally-client': 'dashboard' },
         body: JSON.stringify({ text: rest.join(' ') }),
       });
       console.log(res.ok ? 'Queued for MAIN.' : await res.text());
@@ -89,12 +89,12 @@ async function main() {
     case 'tunnel': {
       const action = rest[0] || 'start';
       if (!['start', 'stop', 'rotate', 'status'].includes(action)) {
-        console.log('usage: tower tunnel [start|stop|rotate|status]');
+        console.log('usage: goally tunnel [start|stop|rotate|status]');
         return;
       }
       const { ensureDaemon } = await import('../src/client.mjs');
       await ensureDaemon();
-      const headers = { 'content-type': 'application/json', 'x-tower-client': 'dashboard' };
+      const headers = { 'content-type': 'application/json', 'x-goally-client': 'dashboard' };
       const t =
         action === 'status'
           ? (await (await fetch(`${LOCAL_URL}/api/overview`)).json()).tunnel
@@ -116,17 +116,17 @@ async function main() {
       return;
     }
     default:
-      console.log(`tower · Control Tower for Cursor agents
+      console.log(`goally · mission board for Cursor agents
 
-  tower start        start the daemon (${LOCAL_URL})
-  tower open         open the board
-  tower status [ws]  print mission status for a workspace
-  tower send <text>  message the mission manager from the terminal
-  tower doctor       check hooks, MCP, Grok, Desktop Bridge and tunnel
-  tower demo [x]     simulate a mission on the board (x = speed multiplier)
-  tower tunnel [cmd] phone access: start | stop | rotate | status (free Cloudflare Quick Tunnel)
-  tower logs         daemon log tail
-  tower stop         stop the daemon`);
+  goally start        start the daemon (${LOCAL_URL})
+  goally open         open the board
+  goally status [ws]  print mission status for a workspace
+  goally send <text>  message the mission manager from the terminal
+  goally doctor       check hooks, MCP, Grok, Desktop Bridge and tunnel
+  goally demo [x]     simulate a mission on the board (x = speed multiplier)
+  goally tunnel [cmd] phone access: start | stop | rotate | status (free Cloudflare Quick Tunnel)
+  goally logs         daemon log tail
+  goally stop         stop the daemon`);
   }
 }
 

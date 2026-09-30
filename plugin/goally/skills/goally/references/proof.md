@@ -1,6 +1,6 @@
 # What counts as proof
 
-The board shows GO for a card only when `tower_complete_task` accepts its evidence. The check is mechanical and uses the hook record, not your description.
+The board shows GO for a card only when `goally_complete_task` accepts its evidence. The check is mechanical and uses the hook record, not your description.
 
 | Evidence kind | Accepted when |
 | --- | --- |
@@ -10,4 +10,4 @@ The board shows GO for a card only when `tower_complete_task` accepts its eviden
 
 When a card is rejected, the reason is specific ("tests ran before the last edit to src/api/export.ts"). Fix that and resubmit; there is no appeal.
 
-The whole mission is GO when every card is proven and every Flight Director or operator message is acknowledged. `tower_finish` refuses otherwise and lists what's missing. That list is the honest answer to "are we done?".
+The whole mission is GO when every card is proven and every Flight Director or operator message is acknowledged. `goally_finish` refuses otherwise and lists what's missing. That list is the honest answer to "are we done?".

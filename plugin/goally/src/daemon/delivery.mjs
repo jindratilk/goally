@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const CANDIDATE_CLIS = [
-  process.env.TOWER_CURSOR_CLI,
+  process.env.GOALLY_CURSOR_CLI,
   '/Applications/Cursor.app/Contents/Resources/app/bin/cursor',
   path.join(os.homedir(), 'Applications/Cursor.app/Contents/Resources/app/bin/cursor'),
   '/usr/local/bin/cursor',
@@ -36,7 +36,7 @@ function run(cmd, args, { input, timeoutMs = 8000 } = {}) {
 
 export function formatMessage(m) {
   const head = [m.from === 'user' ? 'OPERATOR' : 'FLIGHT DIRECTOR', m.id, m.severity?.toUpperCase(), m.taskId].filter(Boolean).join(' · ');
-  return `[${head}] ${m.text}\n\nAcknowledge with the MCP tool tower_ack (messageId "${m.id}", decision accepted | rejected | resolved, short note).`;
+  return `[${head}] ${m.text}\n\nAcknowledge with the MCP tool goally_ack (messageId "${m.id}", decision accepted | rejected | resolved, short note).`;
 }
 
 export class Delivery {

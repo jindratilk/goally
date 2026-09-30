@@ -37,7 +37,7 @@ function Logo() {
         <circle cx="12" cy="12" r="4" />
         <path d="M12 12l6-6" strokeLinecap="round" />
       </svg>
-      <span className="text-sm font-semibold tracking-tight">Control Tower</span>
+      <span className="text-sm font-semibold tracking-tight">Goally</span>
     </div>
   )
 }
@@ -156,12 +156,12 @@ function Welcome() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-5 py-20">
       <h1 className="text-3xl font-semibold tracking-tight">No mission in flight</h1>
-      <p className="text-muted-foreground">Give a big task to the agent with the control-tower skill. It splits the work into cards, runs agents in parallel and this board follows along.</p>
+      <p className="text-muted-foreground">Give a big task to the agent with the goally skill. It splits the work into cards, runs agents in parallel and this board follows along.</p>
       <div className="rounded-lg bg-card p-4 ring-1 ring-foreground/10">
-        <code className="font-mono text-sm">/control-tower Add CSV export to reports</code>
+        <code className="font-mono text-sm">/goally Add CSV export to reports</code>
       </div>
       <p className="text-sm text-muted-foreground">
-        Or run <code className="font-mono text-foreground">tower demo</code> in a terminal to watch a simulated mission.
+        Or run <code className="font-mono text-foreground">goally demo</code> in a terminal to watch a simulated mission.
       </p>
     </div>
   )
@@ -186,7 +186,7 @@ export default function App() {
   useAlerts(mission)
 
   useEffect(() => {
-    document.title = mission ? `${mission.verdict.go ? 'GO' : 'NO-GO'} · ${mission.title}` : 'Control Tower'
+    document.title = mission ? `${mission.verdict.go ? 'GO' : 'NO-GO'} · ${mission.title}` : 'Goally'
   }, [mission])
   useEffect(() => setNav(false), [route.view, route.mission])
 
@@ -212,7 +212,7 @@ export default function App() {
   if (!overview)
     return (
       <div className="flex min-h-dvh items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Connecting to Control Tower…
+        <Loader2 className="size-4 animate-spin" /> Connecting to Goally…
       </div>
     )
 

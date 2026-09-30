@@ -48,7 +48,7 @@ export function HistoryView({ overview, now, onPick }: { overview: Overview; now
       <Card>
         <CardHeader>
           <CardTitle>All missions</CardTitle>
-          <CardDescription>Stored in ~/.control-tower/missions</CardDescription>
+          <CardDescription>Stored in ~/.goally/missions</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>

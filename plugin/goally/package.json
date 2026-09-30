@@ -1,11 +1,11 @@
 {
-  "name": "control-tower",
+  "name": "goally",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Mission control harness for Cursor agents: board, proof of done and a Grok Build flight director.",
   "bin": {
-    "tower": "bin/tower.mjs"
+    "goally": "bin/goally.mjs"
   },
   "engines": {
     "node": ">=20"

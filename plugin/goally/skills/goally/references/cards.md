@@ -12,7 +12,7 @@ A good card has:
 
 Sizing: one agent, one sitting. If a card needs a paragraph to explain, split it. If three cards touch the same file for the same reason, merge them — two agents editing one file shows up as a collision.
 
-Scope is the operator's, not yours. Work that isn't needed for the goal doesn't get a card, even if it would be nice. If you discover required work mid-mission, `tower_add_task` puts it on the board where the operator can see it.
+Scope is the operator's, not yours. Work that isn't needed for the goal doesn't get a card, even if it would be nice. If you discover required work mid-mission, `goally_add_task` puts it on the board where the operator can see it.
 
 ## Example shape
 

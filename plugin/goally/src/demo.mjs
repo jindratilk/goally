@@ -42,7 +42,7 @@ export async function runDemo({ speed = 1 } = {}) {
   const id = r.missionId;
   console.log(`Demo mission ${id} · ${LOCAL_URL}/#/m/${id}`);
 
-  await main('postToolUse', { tool_name: 'MCP:tower_start_run', tool_input: {}, tool_output: '{}' });
+  await main('postToolUse', { tool_name: 'MCP:goally_start_run', tool_input: {}, tool_output: '{}' });
   await sleep(2);
   await sub('sa-api', 'CT-1', 'Build GET /api/reports/export returning text/csv');
   await sleep(1.2);

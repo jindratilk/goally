@@ -43,10 +43,10 @@ export function spawnDaemon() {
   ensureHome();
   ensureToken();
   const out = fs.openSync(paths.daemonLog, 'a');
-  const child = spawn(process.execPath, [path.join(PLUGIN_ROOT, 'bin', 'tower.mjs'), 'daemon'], {
+  const child = spawn(process.execPath, [path.join(PLUGIN_ROOT, 'bin', 'goally.mjs'), 'daemon'], {
     detached: true,
     stdio: ['ignore', out, out],
-    env: { ...process.env, TOWER_DETACHED: '1' },
+    env: { ...process.env, GOALLY_DETACHED: '1' },
   });
   child.unref();
   return child.pid;

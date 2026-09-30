@@ -18,7 +18,7 @@ function agentOf(state, conversationId) {
   return conversationId;
 }
 
-function isTowerTool(name, tool) {
+function isGoallyTool(name, tool) {
   return new RegExp(`(^|[:_.-])${tool}$`).test(String(name || ''));
 }
 
@@ -63,8 +63,8 @@ export class HookHandler {
     if (payload.session_id && payload.session_id === s.conversationId) return out;
     const v = verdict(s);
     out.additional_context = [
-      `[CONTROL TOWER] Workspace has a live mission "${s.title}" (${s.id}) · ${v.done}/${v.total} tasks proven · status ${s.status}.`,
-      'If you are continuing this mission, call the MCP tool tower_resume first and follow the brief. Otherwise ignore this note.',
+      `[GOALLY] Workspace has a live mission "${s.title}" (${s.id}) · ${v.done}/${v.total} tasks proven · status ${s.status}.`,
+      'If you are continuing this mission, call the MCP tool goally_resume first and follow the brief. Otherwise ignore this note.',
     ].join(' ');
     return out;
   }
@@ -80,13 +80,13 @@ export class HookHandler {
     const tag = taskTag(payload.task) || taskTag(payload.description);
     if (s.status === 'paused') {
       mission.append('blocked', { what: 'subagent', reason: 'Mission paused', agent: 'main' });
-      return { permission: 'deny', user_message: 'Control Tower: mission is paused. Resume it on the board to launch agents.' };
+      return { permission: 'deny', user_message: 'Goally: mission is paused. Resume it on the board to launch agents.' };
     }
     if (running >= cfg.maxParallelAgents) {
       mission.append('blocked', { what: 'subagent', reason: `Parallel limit ${cfg.maxParallelAgents} reached${tag ? ` (${tag})` : ''}`, agent: 'main' });
       return {
         permission: 'deny',
-        user_message: `Control Tower: ${running} agents are running (limit ${cfg.maxParallelAgents}). Wait for one to finish, then launch ${tag || 'this task'} again.`,
+        user_message: `Goally: ${running} agents are running (limit ${cfg.maxParallelAgents}). Wait for one to finish, then launch ${tag || 'this task'} again.`,
       };
     }
     const held = cfg.intervention === 'block' && tag && s.findings.find((f) => f.status === 'open' && f.severity === 'high' && f.taskId === tag);
@@ -94,7 +94,7 @@ export class HookHandler {
       mission.append('blocked', { what: 'subagent', reason: `${tag} held by ${held.id}`, agent: 'main' });
       return {
         permission: 'deny',
-        user_message: `Control Tower: ${tag} is on hold until Flight Director finding ${held.id} is handled: ${held.action || held.title}`,
+        user_message: `Goally: ${tag} is on hold until Flight Director finding ${held.id} is handled: ${held.action || held.title}`,
       };
     }
     mission.append('agent.start', {
@@ -142,17 +142,17 @@ export class HookHandler {
     mission.append('blocked', { what: 'full build', reason: redact(cmd, 200), agent: agentOf(mission.state, conversationId) });
     return {
       permission: 'deny',
-      user_message: `Control Tower blocked a full build: ${cmd.slice(0, 120)}`,
+      user_message: `Goally blocked a full build: ${cmd.slice(0, 120)}`,
       agent_message:
-        '[CONTROL TOWER] Full builds are blocked for this mission. Run only the targeted test or check from the task card (verify field) for the code you changed. If the card truly needs a full build, explain why with tower_update_task and ask the user.',
+        '[GOALLY] Full builds are blocked for this mission. Run only the targeted test or check from the task card (verify field) for the code you changed. If the card truly needs a full build, explain why with goally_update_task and ask the user.',
     };
   }
 
   recordTool({ mission, payload, conversationId, cfg, ok }) {
     const agent = agentOf(mission.state, conversationId);
     const tool = payload.tool_name || 'tool';
-    if (isTowerTool(tool, 'tower_start_run')) this.maybeBind(mission, conversationId, payload);
-    if (tool === 'Task' || /^MCP:/.test(tool) && /tower_/.test(tool)) return agent;
+    if (isGoallyTool(tool, 'goally_start_run')) this.maybeBind(mission, conversationId, payload);
+    if (tool === 'Task' || /^MCP:/.test(tool) && /goally_/.test(tool)) return agent;
     const command = tool === 'Shell' ? payload.tool_input?.command : null;
     const cls = command ? classifyCommand(command, cfg.fullBuild.patterns) : { kind: QUIET_TOOLS.has(tool) ? 'read' : 'other' };
     const exitCode = ok ? parseExitCode(payload.tool_output) : null;
@@ -177,7 +177,7 @@ export class HookHandler {
     const agent = typeof r === 'string' ? r : r.agent;
     const out = this.inject(ctx.mission, agent, {});
     if (r.cls?.kind === 'build' && r.cls.full && ctx.cfg.fullBuild.policy === 'warn' && agent === 'main') {
-      const warn = '[CONTROL TOWER] That was a full build. Prefer the targeted test from the task card; full builds are slow and rarely prove the specific change.';
+      const warn = '[GOALLY] That was a full build. Prefer the targeted test from the task card; full builds are slow and rarely prove the specific change.';
       out.additional_context = out.additional_context ? `${out.additional_context}\n\n${warn}` : warn;
     }
     return out;
@@ -215,9 +215,9 @@ export class HookHandler {
       if (!v.go && actionable.length) {
         parts.push(
           [
-            `[CONTROL TOWER] Mission "${s.title}" is NO-GO (${v.done}/${v.total} proven). You ended your turn with open work:`,
+            `[GOALLY] Mission "${s.title}" is NO-GO (${v.done}/${v.total} proven). You ended your turn with open work:`,
             ...v.blockers.slice(0, 8).map((b) => `- ${b}`),
-            'Continue with the next open task. If you need the user, mark the card with tower_update_task status "blocked" and a note explaining the question; blocked cards do not trigger auto-continue.',
+            'Continue with the next open task. If you need the user, mark the card with goally_update_task status "blocked" and a note explaining the question; blocked cards do not trigger auto-continue.',
           ].join('\n'),
         );
       }

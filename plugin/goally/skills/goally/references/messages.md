@@ -1,4 +1,4 @@
-# Messages from the tower
+# Messages from the board
 
 Two voices can write to you during a mission:
 
@@ -7,7 +7,7 @@ Two voices can write to you during a mission:
 
 They arrive either as a new turn in this chat (Desktop Bridge) or appended to a tool result (hooks). Either way, they outrank whatever you were about to do next.
 
-Respond with `tower_ack`:
+Respond with `goally_ack`:
 
 - `accepted` — you'll do it. Then do it.
 - `resolved` — it's done, or it was already true.

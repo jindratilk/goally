@@ -1,5 +1,5 @@
 node_modules/
-plugin/control-tower/dashboard/
-plugin/control-tower/bin/.node-path
+plugin/goally/dashboard/
+plugin/goally/bin/.node-path
 .DS_Store
 *.log

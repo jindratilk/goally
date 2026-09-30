@@ -22,7 +22,7 @@ export function verdict(state) {
   const openHigh = state.findings.filter((f) => f.status === 'open' && f.severity === 'high');
   for (const f of openHigh) blockers.push(`Flight Director: ${f.title}`);
   const unacked = state.messages.filter((m) => OPEN_MSG.includes(m.status));
-  if (unacked.length) blockers.push(`${unacked.length} message(s) not acknowledged by MAIN (tower_ack)`);
+  if (unacked.length) blockers.push(`${unacked.length} message(s) not acknowledged by MAIN (goally_ack)`);
   const done = stations.filter((s) => s.go).length;
   return {
     go: stations.length > 0 && done === stations.length && blockers.length === 0,
@@ -150,7 +150,7 @@ export function statusText(mission, { url } = {}) {
   const inbox = s.messages.filter((m) => OPEN_MSG.includes(m.status));
   if (inbox.length) {
     lines.push('');
-    lines.push('Inbox (acknowledge each with tower_ack):');
+    lines.push('Inbox (acknowledge each with goally_ack):');
     for (const m of inbox) lines.push(`- ${m.id} [${m.from}] ${m.severity ? `${m.severity.toUpperCase()} ` : ''}${m.text}`);
   }
   return lines.join('\n');
@@ -202,6 +202,6 @@ export function continuationBrief(mission, { url } = {}) {
     for (const b of v.blockers) out.push(`- ${b}`);
   }
   out.push('');
-  out.push('Continue with the remaining tasks only. Tag every subagent task with its [CT-n] id and finish each card with tower_complete_task plus evidence.');
+  out.push('Continue with the remaining tasks only. Tag every subagent task with its [CT-n] id and finish each card with goally_complete_task plus evidence.');
   return out.join('\n');
 }

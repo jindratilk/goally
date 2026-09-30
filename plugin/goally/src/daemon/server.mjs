@@ -117,7 +117,7 @@ export async function startDaemon() {
 
   function missionFrom(body) {
     const m = registry.resolve({ missionId: body.missionId, workspace: body.workspace, conversationId: body.conversationId });
-    if (!m) throw Object.assign(new Error('No live mission for this workspace. Start one with tower_start_run.'), { status: 404 });
+    if (!m) throw Object.assign(new Error('No live mission for this workspace. Start one with goally_start_run.'), { status: 404 });
     return m;
   }
 
@@ -151,7 +151,7 @@ export async function startDaemon() {
       const task = m.state.tasks.find((t) => t.id === String(body.taskId).toUpperCase());
       if (!task) throw Object.assign(new Error(`Unknown task ${body.taskId}`), { status: 404 });
       if (body.status && !TASK_STATUSES.includes(body.status)) throw Object.assign(new Error(`status must be one of ${TASK_STATUSES.join(', ')}`), { status: 400 });
-      if (body.status === 'done') throw Object.assign(new Error('Use tower_complete_task with evidence to mark a task done.'), { status: 400 });
+      if (body.status === 'done') throw Object.assign(new Error('Use goally_complete_task with evidence to mark a task done.'), { status: 400 });
       m.append('task.update', { taskId: task.id, status: body.status, note: body.note ? redact(body.note, 2000) : undefined });
       return { ok: true, task: { id: task.id, status: task.status } };
     },
@@ -189,7 +189,7 @@ export async function startDaemon() {
     },
     demoFinding(body) {
       const m = missionFrom(body);
-      if (!m.state.workspace.includes('/.control-tower/demo-workspace')) throw Object.assign(new Error('demo only'), { status: 403 });
+      if (!m.state.workspace.includes('/.goally/demo-workspace')) throw Object.assign(new Error('demo only'), { status: 403 });
       supervisor.apply(m, { findings: [body.finding], resolved: [] }, config);
       m.append('supervisor.run', { ok: true, ms: 18400, findings: 1, summary: 'CT-3 drifted into unrequested hardening', coveredSeq: m.state.lastSeq });
       return { ok: true };
@@ -208,14 +208,14 @@ export async function startDaemon() {
     if (isRemote(req)) throw Object.assign(new Error('Read-only over remote access'), { status: 403 });
     const origin = req.headers.origin;
     if (origin && !(origin === LOCAL_URL || origin === `http://localhost:${PORT}` || /^http:\/\/(localhost|127\.0\.0\.1):5177$/.test(origin))) throw Object.assign(new Error('Bad origin'), { status: 403 });
-    if (req.headers['x-tower-client'] !== 'dashboard') throw Object.assign(new Error('Missing client header'), { status: 403 });
+    if (req.headers['x-goally-client'] !== 'dashboard') throw Object.assign(new Error('Missing client header'), { status: 403 });
   }
 
   function remoteReadGuard(req, url) {
     if (!isRemote(req)) return;
     if (req.headers['cf-access-jwt-assertion']) return;
     const key = config.remote.readKey;
-    const given = url.searchParams.get('key') || /(?:^|;\s*)tower_key=([^;]+)/.exec(req.headers.cookie || '')?.[1];
+    const given = url.searchParams.get('key') || /(?:^|;\s*)goally_key=([^;]+)/.exec(req.headers.cookie || '')?.[1];
     if (!key || !given || !safeEqual(key, given)) throw Object.assign(new Error('Private link key missing or rotated'), { status: 401 });
   }
 
@@ -342,7 +342,7 @@ export async function startDaemon() {
       try {
         remoteReadGuard(req, url);
       } catch {
-        return send(res, 401, 'Control Tower: open the private link or scan the QR code from Settings → Remote access on your Mac.');
+        return send(res, 401, 'Goally: open the private link or scan the QR code from Settings → Remote access on your Mac.');
       }
     }
     return serveStatic(res, p, isRemote(req) && url.searchParams.get('key') ? url.searchParams.get('key') : null);
@@ -353,7 +353,7 @@ export async function startDaemon() {
     let file = path.normalize(path.join(root, decodeURIComponent(p)));
     if (!file.startsWith(root)) return send(res, 403, 'forbidden');
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(root, 'index.html');
-    if (!fs.existsSync(file)) return send(res, 200, 'Control Tower daemon is running. Dashboard build missing: run `npm run build` in dashboard/.');
+    if (!fs.existsSync(file)) return send(res, 200, 'Goally daemon is running. Dashboard build missing: run `npm run build` in dashboard/.');
     const ext = path.extname(file);
     const headers = {
       'content-type': MIME[ext] || 'application/octet-stream',
@@ -363,7 +363,7 @@ export async function startDaemon() {
       'x-frame-options': 'DENY',
       'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
     };
-    if (setKey) headers['set-cookie'] = `tower_key=${encodeURIComponent(setKey)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`;
+    if (setKey) headers['set-cookie'] = `goally_key=${encodeURIComponent(setKey)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`;
     res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);
   }
@@ -380,7 +380,7 @@ export async function startDaemon() {
     server.listen(PORT, HOST, resolve);
   });
   writeJsonAtomic(paths.daemon, { pid: process.pid, port: PORT, startedAt: Date.now(), version: VERSION });
-  log(`Control Tower daemon ${VERSION} on ${LOCAL_URL} (pid ${process.pid})`);
+  log(`Goally daemon ${VERSION} on ${LOCAL_URL} (pid ${process.pid})`);
 
   const shutdown = () => {
     supervisor.stop();

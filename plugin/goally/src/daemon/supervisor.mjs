@@ -8,7 +8,7 @@ import { redact } from './redact.mjs';
 import { stats, verdict } from './views.mjs';
 
 const GROK_CANDIDATES = [
-  process.env.TOWER_GROK_BIN,
+  process.env.GOALLY_GROK_BIN,
   path.join(os.homedir(), '.grok', 'bin', 'grok'),
   path.join(os.homedir(), '.local', 'bin', 'grok'),
   '/opt/homebrew/bin/grok',

@@ -21,7 +21,7 @@ export async function doctor() {
     if (state === "warn") holds++;
     console.log(`${mark} ${label}${detail ? ` ${D}· ${detail}${X}` : ''}`);
   };
-  console.log(`\nCONTROL TOWER · PREFLIGHT POLL\n`);
+  console.log(`\nGOALLY · PREFLIGHT POLL\n`);
 
   const major = Number(process.versions.node.split('.')[0]);
   line(major >= 20, 'Node.js', process.version);
@@ -36,7 +36,7 @@ export async function doctor() {
     line(false, 'Local token', 'missing');
   }
 
-  const installed = path.join(os.homedir(), '.cursor', 'plugins', 'local', 'control-tower');
+  const installed = path.join(os.homedir(), '.cursor', 'plugins', 'local', 'goally');
   const manifest = path.join(installed, '.cursor-plugin', 'plugin.json');
   line(fs.existsSync(manifest) ? true : 'warn', 'Cursor plugin', fs.existsSync(manifest) ? installed : 'not installed · run scripts/install.sh');
 
@@ -77,7 +77,7 @@ export async function doctor() {
       line(false, 'Remote access', `${cfg.remote.hostname} · ${e.message}`);
     }
   } else {
-    line('warn', 'Remote access', 'off · tower tunnel start (free Cloudflare Quick Tunnel)');
+    line('warn', 'Remote access', 'off · goally tunnel start (free Cloudflare Quick Tunnel)');
   }
 
   console.log(`\n${ok ? (holds ? `${Y}GO WITH ${holds} HOLD${holds > 1 ? "S" : ""}${X}` : `${G}ALL STATIONS GO${X}`) : `${R}NO-GO · fix the items above${X}`}\n`);
