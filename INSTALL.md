@@ -57,7 +57,7 @@ If `~/.local/bin` is not on `PATH`, tell the operator to add `export PATH="$HOME
 
 You cannot reload the harness you are running in. Tell the operator exactly this, for each harness the installer wired:
 
-- **Cursor:** run **Developer: Reload Window** from the command palette. Optional: enable Cursor Settings → Beta → **Allow CLI to access desktop agents** and restart Cursor, so the Goal Director can write into the chat immediately (without it, its messages arrive on the manager's next tool call).
+- **Cursor:** run **Developer: Reload Window** from the command palette. Optional: if Cursor Settings → Beta shows **Allow CLI to access desktop agents** (Cursor enables it per account, so it is often missing), enable it and restart Cursor so the Goal Director can write into the chat immediately. Without it, its messages arrive on the manager's next Goally tool call.
 - **Claude Code:** start a new session (`claude`) so the skill and the `goally` MCP server load. `/mcp` should list `goally` as connected.
 - **Codex:** start a new session (`codex`) so the skill and the `goally` MCP server load. `/mcp` should list `goally`.
 - If Grok is installed but not signed in: run `grok login`.

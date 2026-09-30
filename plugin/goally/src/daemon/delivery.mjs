@@ -71,7 +71,7 @@ export class Delivery {
     const cli = this.cli();
     if (!cli) return { available: false, reason: 'Cursor CLI not found', threads: [] };
     if (!fs.existsSync(BRIDGE_DIR)) {
-      return { available: false, reason: 'Desktop Bridge is off. Enable Settings → Beta → "Allow CLI to access desktop agents" and restart Cursor.', threads: [] };
+      return { available: false, reason: 'Off · optional. Director messages arrive with the next Goally tool result. If Cursor Settings → Beta shows "Allow CLI to access desktop agents", enable it and restart Cursor.', threads: [] };
     }
     const r = await run(cli, ['desktop', 'ls', '--json'], { timeoutMs: 6000 });
     if (r.code !== 0) return { available: false, reason: (r.stderr || r.stdout || 'desktop ls failed').trim().slice(0, 200), threads: [] };
