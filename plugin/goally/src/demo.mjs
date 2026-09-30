@@ -1,15 +1,69 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { call, ensureDaemon } from './client.mjs';
 import { LOCAL_URL, paths } from './paths.mjs';
 
 const MAIN = `demo-main-${crypto.randomBytes(3).toString('hex')}`;
 
+/** A small mock of the reports page as a PNG, so the task panel has something to show. */
+function writeDemoShot(file) {
+  const W = 720, H = 400;
+  const px = Buffer.alloc(W * H * 3, 0xf7);
+  const rect = (x, y, w, h, [r, g, b]) => {
+    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) px.set([r, g, b], (j * W + i) * 3);
+  };
+  rect(0, 0, W, 44, [255, 255, 255]);
+  rect(0, 44, W, 1, [222, 221, 215]);
+  rect(24, 16, 120, 12, [38, 37, 30]);
+  rect(24, 76, 200, 18, [38, 37, 30]);
+  rect(548, 68, 148, 34, [38, 37, 30]);
+  rect(566, 82, 112, 6, [247, 247, 244]);
+  rect(24, 124, 672, 240, [255, 255, 255]);
+  for (let r = 0; r < 6; r++) {
+    rect(24, 124 + r * 40, 672, 1, [235, 234, 229]);
+    rect(44, 140 + r * 40, 90 + ((r * 37) % 60), 8, [200, 199, 193]);
+    rect(360, 140 + r * 40, 60, 8, [200, 199, 193]);
+    rect(600, 140 + r * 40, 60, 8, r === 2 ? [31, 138, 101] : [200, 199, 193]);
+  }
+  const raw = Buffer.alloc((W * 3 + 1) * H);
+  for (let y = 0; y < H; y++) {
+    raw[y * (W * 3 + 1)] = 0;
+    px.copy(raw, y * (W * 3 + 1) + 1, y * W * 3, (y + 1) * W * 3);
+  }
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf) => {
+    let c = 0xffffffff;
+    for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(td));
+    return Buffer.concat([len, td, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0);
+  ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  fs.writeFileSync(file, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
+}
+
 export async function runDemo({ speed = 1 } = {}) {
   if (!(await ensureDaemon())) throw new Error('daemon not running');
   const ws = path.join(paths.home, 'demo-workspace');
   fs.mkdirSync(path.join(ws, 'src'), { recursive: true });
+  const shot = path.join(ws, 'reports-export.png');
+  writeDemoShot(shot);
   const sleep = (s) => new Promise((r) => setTimeout(r, (s * 1000) / Math.max(0.1, speed)));
   const base = { workspace_roots: [ws], cursor_version: 'demo', model: 'demo' };
   const hook = (event, payload) => call('POST', `/api/hook/${event}`, { payload: { ...base, ...payload } });
@@ -98,7 +152,7 @@ export async function runDemo({ speed = 1 } = {}) {
   await call('POST', '/api/rpc/ack', { missionId: id, messageId: 'M-1', decision: 'resolved', note: 'CT-3 proven with targeted test' });
   await sleep(1.5);
   await shell(MAIN, 'npx playwright test e2e/export.spec.ts', 0, 21000);
-  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-2', evidence: [{ kind: 'test', ref: 'npx playwright test e2e/export.spec.ts' }] });
+  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-2', evidence: [{ kind: 'test', ref: 'npx playwright test e2e/export.spec.ts' }, { kind: 'screenshot', ref: shot }] });
   await sleep(1);
   await sub('sa-prev', 'CT-4', 'Open preview deploy, download CSV as a real user, attach screenshot');
   console.log('Demo running · CT-4 left in flight so the board stays live.');

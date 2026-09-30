@@ -112,7 +112,7 @@ export async function runMcp() {
     {
       title: 'Complete task with proof',
       description:
-        'Mark a task done. Requires evidence. A test counts only if the hooks saw it pass after the last file edit, so run the targeted test first. Other evidence: commit hash, URL, screenshot path.',
+        'Mark a task done. Requires evidence. A test counts only if the hooks saw it pass after the last file edit, so run the targeted test first. Other evidence: commit hash, URL. For UI work also attach a screenshot (kind screenshot, path to a png/jpg) so the operator sees it on the board.',
       inputSchema: {
         taskId: z.string(),
         evidence: z

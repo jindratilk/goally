@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { ensureToken, loadConfig, saveConfig } from '../config.mjs';
 import { HOST, LOCAL_URL, PORT, ensureHome, paths, readJson, writeJsonAtomic } from '../paths.mjs';
@@ -23,6 +24,8 @@ const TASK_STATUSES = ['todo', 'running', 'review', 'blocked', 'done', 'failed']
 function log(...args) {
   console.log(new Date().toISOString(), ...args);
 }
+
+const SHOT_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
 
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' ? body : JSON.stringify(body);
@@ -287,6 +290,22 @@ export async function startDaemon() {
         if (req.method === 'GET' && !sub) return send(res, 200, publicState(m, { url: urlFor(m) }));
         if (req.method === 'GET' && sub === '/brief') return send(res, 200, { text: continuationBrief(m, { url: urlFor(m) }) });
         if (req.method === 'GET' && sub === '/events') return send(res, 200, { events: m.readEvents() });
+        if (req.method === 'GET' && sub === '/shot') {
+          // Serves only image files the agent attached as screenshot evidence for this mission.
+          const ref = url.searchParams.get('ref') || '';
+          const known = m.state.tasks.some((t) => t.evidence.some((e) => e.kind === 'screenshot' && e.ref === ref));
+          const mime = SHOT_MIME[path.extname(ref).toLowerCase()];
+          const file = ref.startsWith('~/') ? path.join(os.homedir(), ref.slice(2)) : path.resolve(m.state.workspace || '/', ref);
+          let size = 0;
+          try {
+            const st = fs.statSync(file);
+            if (st.isFile()) size = st.size;
+          } catch {}
+          if (!known || !mime || !size || size > 15e6) return send(res, 404, { error: 'screenshot not found' });
+          res.writeHead(200, { 'content-type': mime, 'content-length': size, 'cache-control': 'private, max-age=60', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' });
+          fs.createReadStream(file).pipe(res);
+          return;
+        }
         if (req.method === 'POST') {
           dashboardGuard(req);
           const body = await readBody(req);

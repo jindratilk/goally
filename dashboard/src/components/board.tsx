@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, Link2, Lock, OctagonAlert, Search } from 'lucide-react'
+import { CheckCircle2, ImageOff, Link2, Lock, OctagonAlert, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Agent, Mission, Task, TaskStatus } from '@/lib/api'
 import { ago, dur, shortPath } from '@/lib/format'
@@ -54,7 +54,7 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
         ) : task.status === 'todo' && waiting.length ? (
           <span>After {waiting.join(', ')}</span>
         ) : task.status === 'done' ? (
-          <span className="truncate font-mono">{task.evidence.at(-1)?.ref}</span>
+          <span className="truncate font-mono">{task.evidence.findLast((e) => e.kind !== 'screenshot' && e.kind !== 'note')?.ref}</span>
         ) : (
           <span>{ago(task.updatedAt || task.startedAt, now)}</span>
         )}
@@ -119,14 +119,36 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
+const UI_FILE = /\.(tsx|jsx|vue|svelte|css|scss|html|swift|xib|storyboard)$/i
+
+function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
+  const [failed, setFailed] = useState(false)
+  const src = /^https?:\/\//.test(ref_) ? ref_ : `/api/missions/${missionId}/shot?ref=${encodeURIComponent(ref_)}`
+  if (failed)
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <ImageOff className="size-4 shrink-0" />
+        <span className="min-w-0 truncate font-mono text-xs">{ref_}</span>
+        <span className="ml-auto shrink-0">Can't load this image</span>
+      </div>
+    )
+  return (
+    <a href={src} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
+      <img src={src} alt={ref_} onError={() => setFailed(true)} className="max-h-[60vh] w-full object-contain" />
+    </a>
+  )
+}
+
 export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | null; mission: Mission; now: number; onClose: () => void }) {
   const task = mission.tasks.find((t) => t.id === taskId) ?? null
   const agents = task ? agentsFor(task, mission.agents) : []
   const findings = task ? mission.findings.filter((f) => f.taskId === task.id) : []
+  const shots = task ? task.evidence.filter((e) => e.kind === 'screenshot') : []
+  const isUi = !!task && (shots.length > 0 || task.lane.toLowerCase() === 'ui' || agents.some((a) => a.modifiedFiles.some((f) => UI_FILE.test(f))))
   const events = task ? mission.timeline.filter((e) => e.taskId === task.id || agents.some((a) => a.id === e.agent)).slice(-10).reverse() : []
   return (
     <Sheet open={!!task} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-lg">
+      <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:w-2/3 data-[side=right]:sm:max-w-none">
         {task && (
           <div className="flex h-full flex-col overflow-y-auto">
             <SheetHeader className="gap-2 border-b p-5 pr-12">
@@ -160,6 +182,24 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                   </Row>
                 )}
               </div>
+
+              {isUi && (
+                <section>
+                  <h3 className="mb-2 text-sm font-medium">Screenshot</h3>
+                  {shots.length > 0 ? (
+                    <div className="flex flex-col gap-3">
+                      {shots.map((e, i) => (
+                        <Shot key={i} missionId={mission.id} ref_={e.ref} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      <ImageOff className="size-4 shrink-0" />
+                      No screenshot yet. The agent attaches one as proof for UI work.
+                    </div>
+                  )}
+                </section>
+              )}
 
               <section>
                 <h3 className="mb-2 text-sm font-medium">Agent runs</h3>
