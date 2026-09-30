@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Mission control harness for Cursor agents: board, proof of done and a Grok Build flight director.",
+  "description": "Mission control harness for Cursor agents: board, proof of done and a Grok Build goal director.",
   "bin": {
     "goally": "bin/goally.mjs"
   },

@@ -26,7 +26,7 @@ export function directorBrief() {
       return fs.readFileSync(f, 'utf8').trim();
     } catch {}
   }
-  return 'You are the Flight Director, an independent reviewer of a coding-agent mission. Flag only what matters.';
+  return 'You are the Goal Director, an independent reviewer of a coding-agent mission. Flag only what matters.';
 }
 
 function findGrok() {
@@ -229,7 +229,7 @@ export class Supervisor {
       }
       if (out.type === 'error' || (r.code !== 0 && !out.text)) throw new Error(String(out.message || `grok exited ${r.code}`).split('\n')[0]);
       const parsed = parseVerdict(out.text);
-      if (!parsed) throw new Error('Flight Director reply was not valid JSON');
+      if (!parsed) throw new Error('Goal Director reply was not valid JSON');
       this.apply(mission, parsed, cfg);
       mission.append('supervisor.run', {
         ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary,

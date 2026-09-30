@@ -24,7 +24,7 @@ export function HistoryView({ overview, now, onPick }: { overview: Overview; now
         <Kpi icon={Rocket} label="Missions" value={ms.length} sub={`${ms.filter((m) => m.go).length} reached GO`} />
         <Kpi icon={ShieldCheck} label="Tasks launched" value={`${proven}/${tasks}`} sub={pct(tasks ? proven / tasks : null)} />
         <Kpi icon={Bot} label="Agents launched" value={ms.reduce((a, m) => a + m.agentsTotal, 0)} sub={avg ? `avg mission ${dur(avg)}` : undefined} />
-        <Kpi icon={Hammer} label="Full builds" value={ms.reduce((a, m) => a + m.fullBuilds, 0)} sub={`${ms.reduce((a, m) => a + m.findings, 0)} Director findings`} />
+        <Kpi icon={Hammer} label="Full builds" value={ms.reduce((a, m) => a + m.fullBuilds, 0)} sub={`${ms.reduce((a, m) => a + m.findings, 0)} Goal Director findings`} />
       </div>
 
       <Card>

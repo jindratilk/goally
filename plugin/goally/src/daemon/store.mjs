@@ -291,7 +291,7 @@ export function reduce(state, ev) {
       break;
     case 'finding': {
       state.findings.push({ ...ev.finding, t: ev.t, status: 'open' });
-      note(state, ev, 'finding', `FLIGHT DIRECTOR ${ev.finding.severity.toUpperCase()} · ${short(ev.finding.title, 100)}`, { taskId: ev.finding.taskId, level: ev.finding.severity === 'high' ? 'error' : 'warn' });
+      note(state, ev, 'finding', `GOAL DIRECTOR ${ev.finding.severity.toUpperCase()} · ${short(ev.finding.title, 100)}`, { taskId: ev.finding.taskId, level: ev.finding.severity === 'high' ? 'error' : 'warn' });
       break;
     }
     case 'finding.status': {
@@ -305,7 +305,7 @@ export function reduce(state, ev) {
         lastAttemptAt: null, deliveredAt: null, ackNote: null,
       });
       if (ev.message.from === 'flight-director') state.counters.interventions += 1;
-      note(state, ev, 'message', `${ev.message.from === 'user' ? 'YOU' : 'FLIGHT DIRECTOR'} → MAIN · ${short(ev.message.text, 90)}`, { level: 'info' });
+      note(state, ev, 'message', `${ev.message.from === 'user' ? 'YOU' : 'GOAL DIRECTOR'} → MAIN · ${short(ev.message.text, 90)}`, { level: 'info' });
       break;
     }
     case 'message.status': {
@@ -338,8 +338,7 @@ export function reduce(state, ev) {
       if (ev.sessionId) s.sessionId = ev.sessionId;
       if (ev.costUsd) s.costUsd += ev.costUsd;
       s.lastSummary = ev.summary || s.lastSummary || '';
-      note(state, ev, 'supervisor', ev.ok ? `Flight Director check · ${ev.findings ?? 0} findings${ev.summary ? ` · ${short(ev.summary, 80)}` : ''}` : `Flight Director offline · ${short(ev.error, 90)}`, { level: ev.ok ? 'info' : 'error' });
-      break;
+      note(state, ev, 'supervisor', ev.ok ? `Goal Director check · ${ev.findings ?? 0} findings${ev.summary ? ` · ${short(ev.summary, 80)}` : ''}` : `Goal Director offline · ${short(ev.error, 90)}`, { level: ev.ok ? 'info' : 'error' });      break;
     }
     case 'supervisor.skip':
       state.supervisor.running = false;

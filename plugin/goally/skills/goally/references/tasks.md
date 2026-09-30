@@ -1,6 +1,6 @@
 # Cutting a mission into tasks
 
-A task is the unit the operator reads on the board and the unit the Flight Director judges. It should make sense to someone who only sees the board.
+A task is the unit the operator reads on the board and the unit the Goal Director judges. It should make sense to someone who only sees the board.
 
 A good task has:
 

@@ -29,7 +29,7 @@ Výsledný pocit: zadám velký úkol, vidím jasný board s paralelní prací a
 
 ### Design: SpaceX mission control × blueprint
 
-- **Motiv:** řídicí středisko mise. Běh úkolu je „mise“, karty jsou „stages“, dozor Grok je „Flight Director“ a verdikt „hotovo“ je **GO / NO-GO poll**. V něm každý požadavek hlásí GO jen s důkazem.
+- **Motiv:** řídicí středisko mise. Běh úkolu je „mise“, karty jsou „stages“, dozor Grok je „Goal Director“ a verdikt „hotovo“ je **GO / NO-GO poll**. V něm každý požadavek hlásí GO jen s důkazem.
 - **Barvy (SpaceX):** absolutní černá `#000`, text `#f0f0fa`, linky a rámečky `rgba(240,240,250,0.35)`, jemné plochy `rgba(240,240,250,0.1)`. Jinak žádné barevné akcenty.
 - **Stavové barvy, jen střídmě:** červená `#cc0000` pro chybu a NO-GO, jantarová `#f5a623` pro blokováno a hold. Hotovo je plně bílé.
 - **Fonty (SpaceX):** D-DIN a D-DIN-Bold (licence SIL OFL, hostované lokálně), záložní font Barlow. Popisky a navigace jsou VELKÝMI písmeny s prostrkáním 0.1em, čísla mají tabulkové číslice.
@@ -52,12 +52,10 @@ Výsledný pocit: zadám velký úkol, vidím jasný board s paralelní prací a
 ### Nastavení (v dashboardu, uložené v `~/.goally/config.json`)
 
 - **Maximální počet paralelních agentů.** Hook `subagentStart` odmítne dalšího subagenta nad limit se zprávou „počkej, běží N agentů“.
-- **Dozor:** zapnuto nebo vypnuto, interval (výchozí 10 min) a model/úsilí Grok.
-- **Síla zásahu:** jen upozornit, vložit zprávu agentovi, nebo smí i blokovat příkazy.
-- **Plné buildy:** blokovat ano/ne a seznam příkazů, které se za plný build považují.
-- **Limit automatických pokračování** po „hotovo“ bez důkazu (výchozí 3).
+- **Goal Director:** zapnuto nebo vypnuto, interval (výchozí 10 min) a model/úsilí Grok.
+- **Intervention:** vypínač — zapnuto = Goal Director píše do hlavního chatu; vypnuto = nálezy jen na boardu.
 - **Vzdálený přístup** přes tunel zapnuto nebo vypnuto.
-- **Pauza mise:** nové subagenty nepustí a zastaví automatické pokračování.
+- **Pauza mise:** nové subagenty nepustí.
 - Měnit nastavení jde jen lokálně. Na telefonu se nastavení jen zobrazí.
 
 ### Statistiky
@@ -141,8 +139,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 - `subagentStart` / `subagentStop`: karta se přepne na „pracuje“ a potom na „hotovo, chyba nebo přerušeno“. Uloží se změněné soubory, souhrn a délka běhu.
 - `afterFileEdit`: ukáže, kdo mění které soubory, a zneplatní staré testové důkazy.
 - `postToolUse` / `postToolUseFailure`: rozpozná testy, buildy a git. Vrací cestu k **doručení zásahu** (`additional_context`).
-- `preToolUse`: když dozor zjistí zbytečné plné buildy, další takový příkaz zablokuje se zprávou „spusť cílený test“.
-- `stop`: když board má otevřené karty bez důkazu, pošle agentovi `followup_message` se seznamem blockerů. Limit je `loop_limit: 3`, aby nevznikla smyčka.
+- `stop`: zaznamená konec tahu manažera a může spustit Goal Director kontrolu. Bez auto-continue smyčky.
 - `preCompact`: před kompakcí uloží checkpoint pro obnovu.
 - Každý hook se zeptá daemonu, skončí do 1 s, a když daemon neběží, pustí agenta dál.
 
@@ -161,7 +158,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 
 - **Píše jen manažerovi.** Hlavní session je ta, která zavolala `goally_start_run`, a daemon si uloží její `conversation_id`. Subagentům dozor nepíše. Instrukci jim předá manažer tak, že subagenta pokračuje s novým zadáním, zastaví ho nebo spustí nového.
 - **Schránka (inbox):** každá zpráva dozoru, a také tvoje zpráva z dashboardu nebo z telefonu, se uloží do schránky manažera s ID, závažností a doporučeným krokem. Na boardu je vidět její stav: čeká, doručeno, potvrzeno, vyřešeno.
-- **Formát zprávy:** `[FLIGHT DIRECTOR · F-12 · HIGH · CT-3] Plný build už potřetí. Spusť jen test pro src/export. Potvrď přes goally_ack.`
+- **Formát zprávy:** `[GOAL DIRECTOR · F-12 · HIGH · CT-3] Plný build už potřetí. Spusť jen test pro src/export. Potvrď přes goally_ack.`
 - **Hlavní cesta: Cursor Desktop Bridge.** Je to skrytá funkce přímo v Cursoru a v tvé verzi 3.22.12 je zabudovaná. Příkaz `cursor desktop send <thread-id> "zpráva"` vloží zprávu do existující session kdykoli, stejně jako kdybys ji napsal ty. `cursor desktop ls --json` vypíše session s ID, názvem, stavem a oknem.
   - **Výchozí chování:** když manažer zrovna pracuje, zpráva se zařadí do fronty a odešle se hned po jeho aktuálním tahu. Když manažer stojí, spustí se nový tah okamžitě.
   - **Kritický nález:** `--force` přeruší aktuální tah a zprávu odešle hned. Používá se jen při závažnosti HIGH, například při zbytečném plném buildu nebo při práci mimo zadání.
@@ -171,8 +168,6 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 - **Záloha 1: GUI automatizace** pro případ, že Desktop Bridge nepůjde zapnout. Cursor se spustí s `--remote-debugging-port` a daemon přes CDP vybere správný chat, vloží text a odešle ho. Na tomto principu fungují komunitní projekty `cursor-bridge-mcp` a `nitech/auto`. Alternativou je Peekaboo nebo macOS Accessibility (fokus okna, vložení, Enter). Obojí je křehčí, závisí na UI Cursoru a u Accessibility bere fokus okna.
 - **Záloha 2: hooky** (fungují vždy, ale jen při činnosti manažera):
   1. **Manažer pracuje:** další hook v jeho session (`postToolUse`) přidá zprávu přes `additional_context`.
-  2. **Kritický nález:** `preToolUse` zablokuje konkrétní příkaz a zpráva dorazí jako `agent_message`.
-  3. **Manažer chce skončit tah:** hook `stop` vrátí `followup_message` a Cursor ji sám odešle do stejné session.
 - **Potvrzení:** manažer musí zprávu potvrdit přes MCP `goally_ack` (přijato / odmítnuto s důvodem / vyřešeno). Nepotvrzená zpráva se po 5 minutách pošle znovu a dozor ji uvidí v příští kontrole.
 - **Proti zahlcení:** stejný nález se znovu nepošle, dokud se situace nezmění. Nejvýše jedna zpráva s `--force` za 10 minut.
 - **Stejnou cestou píšeš manažerovi i ty** z dashboardu nebo z telefonu: napíšeš zprávu, daemon ji pošle přes `cursor desktop send`.
@@ -201,7 +196,7 @@ Hooky jsou zdroj pravdy o tom, co se opravdu stalo. Agent je nemůže vynechat.
 - Na telefonu je dashboard jen ke čtení. Zásahy a změny jdou jen lokálně.
 - Grok dozor má jen nástroje pro čtení, bez shellu a bez úprav souborů.
 - Před uložením a před odesláním Grokovi se z výstupů příkazů odstraní tajné údaje (klíče, tokeny, `.env` hodnoty) a výstupy se zkrátí.
-- Hooky při chybě nikdy neblokují práci. Blokovat umí jen `preToolUse` na konkrétní nález dozoru.
+- Hooky při chybě nikdy neblokují práci. Blokovat umí jen paralelní limit a pauza mise (`subagentStart`).
 
 ### Zdroje (ověřeno, max. 3 měsíce staré nebo aktuální dokumentace)
 

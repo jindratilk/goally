@@ -1,5 +1,6 @@
 import { classifyCommand, parseExitCode, taskTag } from './classify.mjs';
 import { redact } from './redact.mjs';
+import { verdict } from './views.mjs';
 
 const PERMISSION_HOOKS = new Set(['preToolUse', 'subagentStart', 'beforeShellExecution', 'beforeMCPExecution', 'beforeReadFile']);
 const QUIET_TOOLS = new Set(['Read', 'Grep', 'Glob', 'LS', 'ReadFile', 'SemanticSearch', 'Search']);
@@ -175,16 +176,8 @@ export class HookHandler {
   on_stop({ mission, payload, conversationId, out }) {
     const s = mission.state;
     if (agentOf(s, conversationId) !== 'main') return out;
-    const loop = payload.loop_count ?? 0;
-    // Deliver any pending inbox messages via additional_context path is handled by postToolUse;
-    // stop only records and may attach queued messages without auto-continuing the loop.
-    const msg = this.delivery.nextForHook(mission, { all: true });
-    if (msg) out.additional_context = msg;
-    mission.append('main.stop', { status: payload.status, loopCount: loop, followup: false });
+    mission.append('main.stop', { status: payload.status, loopCount: payload.loop_count ?? 0, followup: false });
     this.supervisor.trigger(mission, 'main-stop');
     return out;
   }
 }
-
-// Local import to avoid circular dependency issues with views used only in sessionStart
-import { verdict } from './views.mjs';

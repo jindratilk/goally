@@ -1,4 +1,4 @@
-import { Bot, CircleCheck, CircleDashed, CircleX, History, LayoutDashboard, Loader2, Menu, Pause, Play, Radar, ScrollText, Settings, SquareKanban, type LucideIcon } from 'lucide-react'
+import { Bot, CircleCheck, CircleDashed, CircleX, History, ChartColumn, Loader2, Menu, Pause, Play, Radar, ScrollText, Settings, SquareKanban, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -19,9 +19,9 @@ import { Dot, PageHeader, Pill } from '@/components/shared'
 
 const MISSION_VIEWS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Board', icon: SquareKanban },
-  { id: 'overview', label: 'Stats', icon: LayoutDashboard },
+  { id: 'overview', label: 'Stats', icon: ChartColumn },
   { id: 'agents', label: 'Agents', icon: Bot },
-  { id: 'director', label: 'Flight Director', icon: Radar },
+  { id: 'director', label: 'Goal Director', icon: Radar },
   { id: 'activity', label: 'Activity', icon: ScrollText },
 ]
 const GLOBAL_VIEWS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -139,7 +139,7 @@ function useAlerts(mission: Mission | null) {
     for (const f of mission.findings) {
       if (s.findings.has(f.id)) continue
       s.findings.add(f.id)
-      toast[f.severity === 'high' ? 'error' : 'warning'](`Flight Director · ${f.taskId ?? 'mission'}`, { description: f.title })
+      toast[f.severity === 'high' ? 'error' : 'warning'](`Goal Director · ${f.taskId ?? 'mission'}`, { description: f.title })
     }
     for (const m of mission.messages) {
       const prev = s.msgs.get(m.id)
@@ -167,7 +167,7 @@ function Welcome() {
   )
 }
 
-const TITLES: Record<string, string> = { overview: 'Stats', board: 'Board', agents: 'Agents', director: 'Flight Director', activity: 'Activity', history: 'History', settings: 'Settings' }
+const TITLES: Record<string, string> = { overview: 'Stats', board: 'Board', agents: 'Agents', director: 'Goal Director', activity: 'Activity', history: 'History', settings: 'Settings' }
 
 export default function App() {
   const now = useNow(1000)

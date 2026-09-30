@@ -35,7 +35,7 @@ function run(cmd, args, { input, timeoutMs = 8000 } = {}) {
 }
 
 export function formatMessage(m) {
-  const head = [m.from === 'user' ? 'OPERATOR' : 'FLIGHT DIRECTOR', m.id, m.severity?.toUpperCase(), m.taskId].filter(Boolean).join(' · ');
+  const head = [m.from === 'user' ? 'OPERATOR' : 'GOAL DIRECTOR', m.id, m.severity?.toUpperCase(), m.taskId].filter(Boolean).join(' · ');
   return `[${head}] ${m.text}\n\nAcknowledge with the MCP tool goally_ack (messageId "${m.id}", decision accepted | rejected | resolved, short note).`;
 }
 

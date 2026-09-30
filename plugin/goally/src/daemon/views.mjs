@@ -20,7 +20,7 @@ export function verdict(state) {
     blockers.push('Files changed after the last passing test. Re-run the targeted tests.');
   }
   const openHigh = state.findings.filter((f) => f.status === 'open' && f.severity === 'high');
-  for (const f of openHigh) blockers.push(`Flight Director: ${f.title}`);
+  for (const f of openHigh) blockers.push(`Goal Director: ${f.title}`);
   const unacked = state.messages.filter((m) => OPEN_MSG.includes(m.status));
   if (unacked.length) blockers.push(`${unacked.length} message(s) not acknowledged by MAIN (goally_ack)`);
   const done = stations.filter((s) => s.go).length;
@@ -193,7 +193,7 @@ export function continuationBrief(mission, { url } = {}) {
   const open = s.findings.filter((f) => f.status === 'open');
   if (open.length) {
     out.push('');
-    out.push('## Open Flight Director findings');
+    out.push('## Open Goal Director findings');
     for (const f of open) out.push(`- ${f.severity.toUpperCase()} ${f.kind} · ${f.title} → ${f.action}`);
   }
   if (v.blockers.length) {

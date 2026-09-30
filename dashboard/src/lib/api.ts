@@ -107,9 +107,7 @@ export interface MissionSummary { id: string; title: string; workspace: string; 
 export interface Config {
   maxParallelAgents: number
   supervisor: { enabled: boolean; intervalMin: number; model: string; effort: string; triggerOnAgentStop: boolean; maxTurns: number; timeoutSec: number }
-  intervention: 'observe' | 'message' | 'block'
-  fullBuild: { policy: 'allow' | 'warn' | 'block'; patterns: string[] }
-  stopLoopLimit: number
+  intervention: 'observe' | 'message'
   delivery: { bridge: 'auto' | 'off'; forceOnHigh: boolean; forceCooldownMin: number; resendAfterMin: number }
   remote: { enabled: boolean; hostname: string; readKey?: string }
 }

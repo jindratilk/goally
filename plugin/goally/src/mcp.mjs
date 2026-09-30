@@ -70,7 +70,7 @@ export async function runMcp() {
         'Tasks:',
         ...r.tasks.map((t) => `- [${t.id}] ${t.title}${t.depends?.length ? ` (after ${t.depends.join(', ')})` : ''}`),
         '',
-        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each task with goally_complete_task and evidence. Acknowledge every [FLIGHT DIRECTOR] or [OPERATOR] message with goally_ack.',
+        'Rules: start every subagent task text with its tag, e.g. "[CT-2] ...". Finish each task with goally_complete_task and evidence. Acknowledge every [GOAL DIRECTOR] or [OPERATOR] message with goally_ack.',
         'Tell the operator the board URL now.',
       ];
       return text(lines.join('\n'));
@@ -158,7 +158,7 @@ export async function runMcp() {
     'goally_ack',
     {
       title: 'Acknowledge message',
-      description: 'Acknowledge a [FLIGHT DIRECTOR] or [OPERATOR] message: accepted (will do), rejected (explain why in note), resolved (done).',
+      description: 'Acknowledge a [GOAL DIRECTOR] or [OPERATOR] message: accepted (will do), rejected (explain why in note), resolved (done).',
       inputSchema: {
         messageId: z.string(),
         decision: z.enum(['accepted', 'rejected', 'resolved']),

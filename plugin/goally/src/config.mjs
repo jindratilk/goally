@@ -43,7 +43,7 @@ export function deepMerge(base, patch) {
 
 export function loadConfig() {
   ensureHome();
-  return deepMerge(DEFAULTS, readJson(paths.config, {}));
+  return sanitizeConfig(deepMerge(DEFAULTS, readJson(paths.config, {})));
 }
 
 export function saveConfig(patch) {

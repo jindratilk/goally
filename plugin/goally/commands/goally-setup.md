@@ -8,10 +8,10 @@ description: Preflight Goally (daemon, hooks, MCP, Grok Build, Desktop Bridge, p
 Run the preflight and walk the operator through anything that is not GO. Do each step, then re-run the preflight.
 
 1. Run `node ~/.cursor/plugins/local/goally/bin/goally.mjs doctor` in the terminal and show the result.
-2. Grok Build (Flight Director):
+2. Grok Build (Goal Director):
    - If the CLI is missing: `curl -fsSL https://x.ai/cli/install.sh | bash`.
    - If sign-in is missing: run `grok login` (browser, uses the operator's SuperGrok / X Premium+ subscription) or ask for `XAI_API_KEY`.
-3. Desktop Bridge (lets the Flight Director write into this chat at any time): ask the operator to open Cursor Settings → Beta → enable "Allow CLI to access desktop agents" and restart Cursor. If the toggle is missing, hooks still deliver messages when the manager acts.
+3. Desktop Bridge (lets the Goal Director write into this chat at any time): ask the operator to open Cursor Settings → Beta → enable "Allow CLI to access desktop agents" and restart Cursor. If the toggle is missing, hooks still deliver messages when the manager acts.
 4. Phone access: open the board at http://127.0.0.1:4777 in the Cursor built-in browser (browser tool), then Settings → Remote access → Start. It creates a free Cloudflare Quick Tunnel and shows a QR code with a private read-only link.
-5. Parallel limit, Flight Director interval and intervention strength live in the board Settings panel.
+5. Parallel limit, Goal Director interval and the Intervention switch live in the board Settings panel.
 6. Finish with `goally doctor` again and report which stations are GO.

@@ -28,12 +28,11 @@ cat > "$DEST/hooks/hooks.json" <<EOF
     "beforeSubmitPrompt": [{ "command": "$HOOK beforeSubmitPrompt", "timeout": 5 }],
     "subagentStart": [{ "command": "$HOOK subagentStart", "timeout": 5 }],
     "subagentStop": [{ "command": "$HOOK subagentStop", "timeout": 5 }],
-    "beforeShellExecution": [{ "command": "$HOOK beforeShellExecution", "timeout": 5 }],
     "postToolUse": [{ "command": "$HOOK postToolUse", "timeout": 5 }],
     "postToolUseFailure": [{ "command": "$HOOK postToolUseFailure", "timeout": 5 }],
     "afterFileEdit": [{ "command": "$HOOK afterFileEdit", "timeout": 5 }],
     "preCompact": [{ "command": "$HOOK preCompact", "timeout": 5 }],
-    "stop": [{ "command": "$HOOK stop", "timeout": 8, "loop_limit": 20 }]
+    "stop": [{ "command": "$HOOK stop", "timeout": 8 }]
   }
 }
 EOF

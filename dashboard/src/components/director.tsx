@@ -70,7 +70,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
         <Card>
           <CardHeader>
             <CardTitle>Findings</CardTitle>
-            <CardDescription>What the Director flagged and what it asked the manager to do.</CardDescription>
+            <CardDescription>What the Goal Director flagged and what it asked the manager to do.</CardDescription>
             <CardAction>
               <Segmented
                 value={show}
@@ -153,7 +153,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
             <CardDescription>{cfg.supervisor.enabled ? `Checks every ${cfg.supervisor.intervalMin} min${cfg.supervisor.triggerOnAgentStop ? ' and after each agent' : ''}` : 'Paused in settings'}</CardDescription>
             <CardAction>
               {!readOnly && (
-                <Button size="sm" disabled={sup.running || !overview.supervisor.available} onClick={() => act(() => post(`${base}/supervise`), 'Director check started')}>
+                <Button size="sm" disabled={sup.running || !overview.supervisor.available} onClick={() => act(() => post(`${base}/supervise`), 'Goal Director check started')}>
                   {sup.running ? <Loader2 className="animate-spin" /> : <Radar />}
                   Check now
                 </Button>
@@ -225,7 +225,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
               {[...mission.messages].reverse().map((m) => (
                 <li key={m.id} className="flex flex-col gap-1.5 py-2.5">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{m.from === 'user' ? 'You' : 'Director'}</span>
+                    <span className="font-medium text-foreground">{m.from === 'user' ? 'You' : 'Goal Director'}</span>
                     {m.severity === 'high' && <Pill tone="danger">urgent</Pill>}
                     <span className="ml-auto">{ago(m.t, now)}</span>
                   </div>

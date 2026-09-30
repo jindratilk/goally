@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Dot, Segmented } from './shared'
 
 function Field({ label, hint, children, wide }: { label: string; hint?: ReactNode; children: ReactNode; wide?: boolean }) {
@@ -128,28 +127,9 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
         <Field label="Max parallel agents" hint="Extra launches are denied until a slot frees up.">
           <Range value={cfg.maxParallelAgents} min={1} max={12} disabled={ro} onCommit={(v) => save({ maxParallelAgents: v })} />
         </Field>
-        <Field label="Full builds" hint="What happens when an agent runs a whole-project build.">
-          <Segmented value={cfg.fullBuild.policy} disabled={ro} options={[{ value: 'allow', label: 'Allow' }, { value: 'warn', label: 'Warn' }, { value: 'block', label: 'Block' }]} onChange={(v) => save({ fullBuild: { policy: v } })} />
-        </Field>
-        <Field label="Full-build patterns" hint="One regular expression per line." wide>
-          <Textarea
-            key={cfg.fullBuild.patterns.join('\n')}
-            defaultValue={cfg.fullBuild.patterns.join('\n')}
-            disabled={ro}
-            rows={4}
-            className="font-mono text-xs"
-            onBlur={(e) => {
-              const patterns = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
-              if (patterns.join('\n') !== cfg.fullBuild.patterns.join('\n')) save({ fullBuild: { patterns } })
-            }}
-          />
-        </Field>
-        <Field label="Stop loop limit" hint="How often the manager is sent back to work when it stops on NO-GO.">
-          <Range value={cfg.stopLoopLimit} min={0} max={10} disabled={ro} onCommit={(v) => save({ stopLoopLimit: v })} />
-        </Field>
       </Section>
 
-      <Section title="Flight Director" description={overview.supervisor.available ? `Grok Build · ${overview.supervisor.bin}` : 'grok CLI not found. Install Grok Build and run grok login.'}>
+      <Section title="Goal Director" description={overview.supervisor.available ? `Grok Build · ${overview.supervisor.bin}` : 'grok CLI not found. Install Grok Build and run grok login.'}>
         <Field label="Enabled">
           <Switch checked={cfg.supervisor.enabled} disabled={ro} onCheckedChange={(v) => save({ supervisor: { enabled: v } })} />
         </Field>
@@ -159,8 +139,8 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
         <Field label="Also check when an agent finishes">
           <Switch checked={cfg.supervisor.triggerOnAgentStop} disabled={ro} onCheckedChange={(v) => save({ supervisor: { triggerOnAgentStop: v } })} />
         </Field>
-        <Field label="Intervention" hint="Observe logs only. Message writes to the main chat. Block also denies flagged work.">
-          <Segmented value={cfg.intervention} disabled={ro} options={[{ value: 'observe', label: 'Observe' }, { value: 'message', label: 'Message' }, { value: 'block', label: 'Block' }]} onChange={(v) => save({ intervention: v })} />
+        <Field label="Intervention" hint="On: Goal Director writes into the main chat. Off: findings only appear on the board.">
+          <Switch checked={cfg.intervention === 'message'} disabled={ro} onCheckedChange={(v) => save({ intervention: v ? 'message' : 'observe' })} />
         </Field>
         <Field label="Reasoning effort">
           <Segmented value={(cfg.supervisor.effort || 'medium') as 'low' | 'medium' | 'high'} disabled={ro} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} onChange={(v) => save({ supervisor: { effort: v } })} />
