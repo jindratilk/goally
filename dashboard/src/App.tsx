@@ -255,10 +255,12 @@ export default function App() {
             <span className="text-sm font-medium">{TITLES[view]}</span>
           )}
           <div className="ml-auto flex items-center gap-3">
-            <span className={cn('hidden items-center gap-1.5 text-xs sm:flex', offline ? 'text-danger' : 'text-muted-foreground')}>
-              <Dot tone={offline ? 'danger' : 'success'} pulse={!offline} />
-              {offline ? 'Offline' : readOnly ? 'Read-only' : 'Live'}
-            </span>
+            {(offline || readOnly) && (
+              <span className={cn('hidden items-center gap-1.5 text-xs sm:flex', offline ? 'text-danger' : 'text-muted-foreground')}>
+                {offline && <Dot tone="danger" />}
+                {offline ? 'Offline' : 'Read-only'}
+              </span>
+            )}
             {live && !readOnly && !global && (
               <Button size="sm" variant="outline" onClick={() => setStatus(mission.status === 'paused' ? 'active' : 'paused')}>
                 {mission.status === 'paused' ? <Play /> : <Pause />}
