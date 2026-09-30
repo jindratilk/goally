@@ -140,7 +140,7 @@ function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
         <img src={src} alt={ref_} onError={() => setFailed(true)} className="max-h-[60vh] w-full object-contain" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92vh] w-auto max-w-[94vw] gap-0 overflow-hidden bg-card p-0 sm:max-w-[94vw]">
+        <DialogContent className="max-h-[92vh] w-auto max-w-[94vw] gap-0 overflow-hidden bg-card p-0 shadow-[0_32px_90px_-12px_rgba(0,0,0,0.6),0_8px_24px_rgba(0,0,0,0.25)] sm:max-w-[94vw]">
           <DialogTitle className="sr-only">Screenshot</DialogTitle>
           <img src={src} alt={ref_} className="max-h-[92vh] max-w-[94vw] object-contain" />
         </DialogContent>
