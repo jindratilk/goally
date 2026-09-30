@@ -132,12 +132,27 @@ export async function doctor() {
   const cf = spawnSync('cloudflared', ['--version'], { encoding: 'utf8' });
   line(cf.status === 0 ? true : 'warn', 'cloudflared', cf.status === 0 ? cf.stdout.trim().split('\n')[0] : 'brew install cloudflared');
   if (cfg.remote.enabled && cfg.remote.hostname) {
-    try {
-      const res = await fetch(`https://${cfg.remote.hostname}/api/overview`, { redirect: 'manual', signal: AbortSignal.timeout(8000) });
+    // A fresh Quick Tunnel answers 530 or fails DNS for ~10-20 s after the daemon (re)starts.
+    let res;
+    let err;
+    let host = cfg.remote.hostname;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 5000));
+      host = loadConfig().remote.hostname || host;
+      try {
+        res = await fetch(`https://${host}/api/overview`, { redirect: 'manual', signal: AbortSignal.timeout(8000) });
+        err = null;
+        if (res.status < 500) break;
+      } catch (e) {
+        res = null;
+        err = e;
+      }
+    }
+    if (res && res.status < 500) {
       const protectedByAccess = res.status === 302 || res.status === 401 || res.status === 403;
-      line(protectedByAccess ? true : res.ok ? 'warn' : false, 'Remote access', `${cfg.remote.hostname} · HTTP ${res.status}${protectedByAccess ? ' · protected' : res.ok ? ' · NOT protected' : ''}`);
-    } catch (e) {
-      line(false, 'Remote access', `${cfg.remote.hostname} · ${e.message}`);
+      line(protectedByAccess ? true : 'warn', 'Remote access', `${host} · HTTP ${res.status}${protectedByAccess ? ' · protected' : res.ok ? ' · NOT protected' : ''}`);
+    } else {
+      line('warn', 'Remote access', `${host} · ${res ? `HTTP ${res.status}` : err?.message} · phone access only; goally tunnel stop && goally tunnel start`);
     }
   } else {
     line('warn', 'Remote access', 'off · goally tunnel start (free Cloudflare Quick Tunnel)');
