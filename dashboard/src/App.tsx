@@ -101,7 +101,7 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
         </nav>
       )}
       <div className="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1">
-        {group('In flight', live)}
+        {group('Active goals', live)}
         {group('Finished', done)}
       </div>
       <nav className="flex flex-col gap-0.5">
