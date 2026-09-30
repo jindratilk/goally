@@ -1,0 +1,288 @@
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { missionDir } from '../paths.mjs';
+import { redact } from './redact.mjs';
+import { stats, verdict } from './views.mjs';
+
+const GROK_CANDIDATES = [
+  process.env.TOWER_GROK_BIN,
+  path.join(os.homedir(), '.grok', 'bin', 'grok'),
+  path.join(os.homedir(), '.local', 'bin', 'grok'),
+  '/opt/homebrew/bin/grok',
+  '/usr/local/bin/grok',
+].filter(Boolean);
+
+const KINDS = ['overengineering', 'stuck', 'full-build', 'off-scope', 'no-proof', 'integration', 'other'];
+const SEVERITIES = ['low', 'medium', 'high'];
+
+export const PAIN_POINTS = `Rules distilled from the operator's history with coding agents (treat as hard expectations):
+1. The manager must not claim "done" until every requirement has concrete proof (test output, commit, URL, screenshot). New gaps found after a "done" claim are the worst failure.
+2. Stay on the P0 goal. Hardening, refactors, extra tooling, test-harness fixes and polish that were not asked for are over-engineering unless they unblock the goal.
+3. Prefer the smallest targeted test that proves the change. Repeated full builds or full test suites to check one change waste time.
+4. Repeating the same failing command or fixing the same error three times is "stuck": change approach, narrow scope, or ask the operator.
+5. Subagent results must be integrated and verified by the manager; a finished subagent is not a finished task.
+6. Test like a real user when the task is user-facing (actual flow, actual environment), not only unit tests.
+7. Report progress concretely: what is done with proof, what remains, what is blocked.`;
+
+function findGrok() {
+  return GROK_CANDIDATES.find((p) => {
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function ago(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 90) return `${s}s`;
+  const m = Math.round(s / 60);
+  return m < 90 ? `${m}m` : `${Math.round(m / 60)}h`;
+}
+
+export function buildPrompt(mission) {
+  const s = mission.state;
+  const now = Date.now();
+  const v = verdict(s);
+  const st = stats(s, now);
+  const L = [];
+  L.push('You are FLIGHT DIRECTOR, an independent supervisor watching a Cursor coding-agent mission run by a MANAGER agent that delegates to subagents.');
+  L.push('You only observe and judge. Never edit files or run commands. You may read files in the workspace to check claims.');
+  L.push('');
+  L.push(PAIN_POINTS);
+  L.push('');
+  L.push('Look for these finding kinds: overengineering (work beyond the acceptance criteria), stuck (no progress, repeated failures, very long runs), full-build (full builds/suites instead of targeted tests), off-scope (work unrelated to open tasks), no-proof (cards in review or claimed done without evidence), integration (subagent output not integrated, file collisions).');
+  L.push('');
+  L.push(`# Mission ${s.id}: ${s.title}`);
+  L.push(`Status ${s.status} · running ${ago(now - s.startedAt)} · ${v.done}/${v.total} proven · verdict ${v.go ? 'GO' : 'NO-GO'}`);
+  L.push('');
+  L.push('## Goal (from the operator)');
+  L.push(redact(s.goal, 4000));
+  L.push('');
+  L.push('## Tasks');
+  for (const t of s.tasks) {
+    L.push(`- ${t.id} [${t.status}] ${t.title}`);
+    if (t.acceptance) L.push(`  acceptance: ${redact(t.acceptance, 400)}`);
+    if (t.verify) L.push(`  verify: ${redact(t.verify, 300)}`);
+    if (t.startedAt) L.push(`  started ${ago(now - t.startedAt)} ago${t.doneAt ? `, done after ${ago(t.doneAt - t.startedAt)}` : ''}`);
+    if (t.proof) L.push(`  proof: ${t.proof.ok ? 'accepted' : `rejected (${t.proof.reason})`}`);
+    const n = t.notes.at(-1);
+    if (n) L.push(`  last note: ${redact(n.text, 300)}`);
+  }
+  L.push('');
+  L.push('## Agents');
+  for (const a of Object.values(s.agents).slice(-20)) {
+    L.push(`- ${a.taskId || '(untagged)'} ${a.type} [${a.status}] ${a.endedAt ? `ran ${ago(a.durationMs || 0)}` : `running ${ago(now - a.startedAt)}, last activity ${ago(now - a.lastActivityAt)} ago`} · tools ${a.toolCallCount || a.liveToolCalls} · files ${a.modifiedFiles.length}`);
+    L.push(`  task: ${redact(a.task, 300)}`);
+    if (a.summary) L.push(`  summary: ${redact(a.summary, 500)}`);
+    if (a.transcript) L.push(`  transcript: ${a.transcript}`);
+  }
+  L.push(`MANAGER: ${s.main.status}, last activity ${ago(now - s.main.lastActivityAt)} ago, ${s.main.toolCalls} tool calls${s.transcriptPath ? `, transcript: ${s.transcriptPath}` : ''}`);
+  L.push('');
+  L.push('## Stats');
+  L.push(`tests pass/fail ${st.testsPass}/${st.testsFail} · targeted ${st.targetedTests} vs broad ${st.broadTests} · full builds ${st.fullBuilds} · failures ${st.failures} · compactions ${st.compactions} · file collisions ${st.collisions} · edits ${st.edits} across ${st.filesTouched} files`);
+  L.push('');
+  L.push('## Recent tool activity (oldest first)');
+  for (const t of s.tools.filter((x) => x.kind !== 'read').slice(-45)) {
+    L.push(`- ${ago(now - t.t)} ago ${t.agent === 'main' ? 'MANAGER' : s.agents[t.agent]?.taskId || 'sub'} ${t.tool}${t.command ? ` \`${t.command}\`` : ''} ${t.ok ? 'ok' : `FAILED${t.error ? ` (${t.error})` : ''}`}${t.full ? ' FULL-BUILD' : ''}${t.targeted ? ' targeted' : ''}`);
+  }
+  L.push('');
+  L.push('## Most edited files');
+  for (const [p, f] of Object.entries(s.files).sort((a, b) => b[1].count - a[1].count).slice(0, 15)) {
+    L.push(`- ${p} · ${f.count} edits by ${f.agents.map((x) => (x === 'main' ? 'MANAGER' : s.agents[x]?.taskId || 'sub')).join(', ')}`);
+  }
+  const open = s.findings.filter((f) => f.status === 'open');
+  L.push('');
+  L.push('## Your open findings from earlier checks');
+  if (!open.length) L.push('- none');
+  for (const f of open) {
+    const msg = s.messages.find((m) => m.findingId === f.id);
+    L.push(`- ${f.id} ${f.severity} ${f.kind}${f.taskId ? ` ${f.taskId}` : ''}: ${f.title}${msg ? ` · message ${msg.status}${msg.ackNote ? ` (manager: ${msg.ackNote})` : ''}` : ''}`);
+  }
+  L.push('');
+  L.push('# Output');
+  L.push('Reply with ONLY one JSON object, no prose, no code fence:');
+  L.push('{"summary":"one sentence on mission health","findings":[{"kind":"overengineering|stuck|full-build|off-scope|no-proof|integration|other","severity":"low|medium|high","taskId":"CT-1 or null","title":"short headline","detail":"evidence you saw","action":"one imperative instruction for the manager"}],"resolved":["F-1"]}');
+  L.push('At most 3 new findings. Do not repeat an open finding unless it got worse. Put ids of open findings that are no longer true in "resolved". If the mission is healthy, return an empty findings array. Use high only when the mission is clearly wasting time or heading to a false "done".');
+  return L.join('\n');
+}
+
+export function parseVerdict(text) {
+  if (!text) return null;
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const obj = JSON.parse(text.slice(start, end + 1));
+    const findings = (Array.isArray(obj.findings) ? obj.findings : [])
+      .slice(0, 3)
+      .map((f) => ({
+        kind: KINDS.includes(f.kind) ? f.kind : 'other',
+        severity: SEVERITIES.includes(f.severity) ? f.severity : 'medium',
+        taskId: typeof f.taskId === 'string' && /^CT-\d+$/i.test(f.taskId) ? f.taskId.toUpperCase() : null,
+        title: String(f.title || '').slice(0, 160),
+        detail: String(f.detail || '').slice(0, 800),
+        action: String(f.action || '').slice(0, 400),
+      }))
+      .filter((f) => f.title);
+    return { summary: String(obj.summary || '').slice(0, 300), findings, resolved: Array.isArray(obj.resolved) ? obj.resolved.map(String) : [] };
+  } catch {
+    return null;
+  }
+}
+
+export class Supervisor {
+  constructor({ registry, delivery, getConfig, log }) {
+    this.registry = registry;
+    this.delivery = delivery;
+    this.getConfig = getConfig;
+    this.log = log;
+    this.running = new Set();
+    this.timers = new Map();
+    this.interval = null;
+  }
+
+  status() {
+    const bin = findGrok();
+    return { bin: bin || null, available: Boolean(bin) };
+  }
+
+  start() {
+    this.interval = setInterval(() => this.tick(), 30000);
+    this.interval.unref?.();
+  }
+
+  stop() {
+    clearInterval(this.interval);
+  }
+
+  tick() {
+    const cfg = this.getConfig();
+    if (!cfg.supervisor.enabled) return;
+    for (const m of this.registry.live()) {
+      if (m.state.status !== 'active') continue;
+      const last = m.state.supervisor.lastRunAt || m.state.startedAt;
+      if (Date.now() - last >= cfg.supervisor.intervalMin * 60000) this.run(m).catch((e) => this.log?.(`supervisor: ${e.message}`));
+    }
+  }
+
+  trigger(mission, reason) {
+    const cfg = this.getConfig();
+    if (!cfg.supervisor.enabled || !cfg.supervisor.triggerOnAgentStop) return;
+    if (this.timers.has(mission.id)) return;
+    const last = mission.state.supervisor.lastRunAt || 0;
+    const wait = Math.max(20000, 120000 - (Date.now() - last));
+    const t = setTimeout(() => {
+      this.timers.delete(mission.id);
+      this.run(mission, { reason }).catch((e) => this.log?.(`supervisor: ${e.message}`));
+    }, wait);
+    t.unref?.();
+    this.timers.set(mission.id, t);
+  }
+
+  async run(mission, { force = false, reason = 'interval' } = {}) {
+    if (this.running.has(mission.id)) return { skipped: 'already running' };
+    const cfg = this.getConfig();
+    const s = mission.state;
+    if (!force && s.lastSeq - (s.supervisor.lastSeq || 0) < 3) {
+      mission.append('supervisor.skip', { reason: 'no new activity' });
+      return { skipped: 'no new activity' };
+    }
+    const bin = findGrok();
+    this.running.add(mission.id);
+    const coveredSeq = s.lastSeq;
+    mission.append('supervisor.start', { reason });
+    const started = Date.now();
+    try {
+      if (!bin) throw new Error('grok CLI not found. Install Grok Build: curl -fsSL https://x.ai/cli/install.sh | bash');
+      const dir = path.join(missionDir(mission.id), 'supervisor');
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const prompt = buildPrompt(mission);
+      const file = path.join(dir, `check-${String(s.supervisor.runs + 1).padStart(3, '0')}.md`);
+      fs.writeFileSync(file, prompt, { mode: 0o600 });
+      const args = [
+        '-p', prompt,
+        '--output-format', 'json',
+        '--tools', 'read_file,grep,list_dir',
+        '--disallowed-tools', 'Agent',
+        '--max-turns', String(cfg.supervisor.maxTurns),
+        '--cwd', s.workspace,
+        '--no-auto-update',
+      ];
+      if (cfg.supervisor.model) args.push('-m', cfg.supervisor.model);
+      if (cfg.supervisor.effort) args.push('--effort', cfg.supervisor.effort);
+      if (s.supervisor.sessionId) args.push('--resume', s.supervisor.sessionId);
+      const r = await this.exec(bin, args, cfg.supervisor.timeoutSec * 1000, s.workspace);
+      fs.writeFileSync(file.replace(/\.md$/, '.out.json'), r.stdout || r.stderr || '', { mode: 0o600 });
+      let out;
+      try {
+        out = JSON.parse(r.stdout.trim().split('\n').filter(Boolean).at(-1));
+      } catch {
+        throw new Error((r.stderr || r.stdout || `grok exited ${r.code}`).trim().split('\n').slice(-2).join(' ').slice(0, 240));
+      }
+      if (out.type === 'error' || (r.code !== 0 && !out.text)) throw new Error(String(out.message || `grok exited ${r.code}`).split('\n')[0]);
+      const parsed = parseVerdict(out.text);
+      if (!parsed) throw new Error('Flight Director reply was not valid JSON');
+      this.apply(mission, parsed, cfg);
+      mission.append('supervisor.run', {
+        ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary,
+        sessionId: out.sessionId || s.supervisor.sessionId, costUsd: Number(out.total_cost_usd || 0), coveredSeq,
+      });
+      this.delivery.flush(mission).catch(() => {});
+      return { ok: true, ...parsed };
+    } catch (e) {
+      mission.append('supervisor.run', { ok: false, ms: Date.now() - started, error: e.message, coveredSeq: s.supervisor.lastSeq });
+      return { ok: false, error: e.message };
+    } finally {
+      this.running.delete(mission.id);
+    }
+  }
+
+  apply(mission, parsed, cfg) {
+    const s = mission.state;
+    for (const id of parsed.resolved) {
+      const f = s.findings.find((x) => x.id === id && x.status === 'open');
+      if (f) mission.append('finding.status', { id, status: 'resolved' });
+    }
+    for (const f of parsed.findings) {
+      const dup = s.findings.find((x) => x.status === 'open' && x.kind === f.kind && x.taskId === f.taskId);
+      if (dup && SEVERITIES.indexOf(f.severity) <= SEVERITIES.indexOf(dup.severity)) continue;
+      const id = `F-${s.findings.length + 1}`;
+      mission.append('finding', { finding: { id, ...f } });
+      if (cfg.intervention === 'observe' || f.severity === 'low') continue;
+      mission.append('message', {
+        message: {
+          id: `M-${s.messages.length + 1}`,
+          from: 'flight-director',
+          severity: f.severity,
+          taskId: f.taskId,
+          findingId: id,
+          text: `${f.title}. ${f.action}`,
+        },
+      });
+    }
+  }
+
+  exec(bin, args, timeoutMs, cwd) {
+    return new Promise((resolve) => {
+      const child = spawn(bin, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GROK_DISABLE_AUTOUPDATER: '1' } });
+      let stdout = '';
+      let stderr = '';
+      const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
+      child.stdout.on('data', (d) => (stdout += d));
+      child.stderr.on('data', (d) => (stderr += d));
+      child.on('error', (e) => {
+        clearTimeout(timer);
+        resolve({ code: -1, stdout, stderr: e.message });
+      });
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve({ code, stdout, stderr });
+      });
+    });
+  }
+}

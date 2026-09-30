@@ -1,0 +1,18 @@
+{
+  "name": "control-tower",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mission control harness for Cursor agents: board, proof of done and a Grok Build flight director.",
+  "bin": {
+    "tower": "bin/tower.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "qrcode": "^1.5.4",
+    "zod": "^3.25.0"
+  }
+}

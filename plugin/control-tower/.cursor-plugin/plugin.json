@@ -1,0 +1,9 @@
+{
+  "name": "control-tower",
+  "version": "0.1.0",
+  "description": "Mission control for big agent tasks: audit into a live board, parallel agents with a limit, proof-of-done GO/NO-GO poll and a Grok Build flight director that steers the manager chat.",
+  "author": { "name": "Jindřich Tilkovský" },
+  "license": "MIT",
+  "keywords": ["agents", "subagents", "hooks", "mcp", "dashboard", "supervisor", "grok"],
+  "logo": "assets/logo.svg"
+}
