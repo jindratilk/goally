@@ -4,20 +4,23 @@ Mission control for big agent tasks in Cursor. You hand the agent a large task; 
 
 ## Install
 
+Goally installs into Cursor, Claude Code and Codex (every one it finds). Paste this into any of them:
+
+> Install Goally for me. Follow the steps in https://github.com/jindratilk/goally/blob/main/INSTALL.md exactly, then run `goally doctor` and tell me what's left for me to do.
+
+Or by hand, which is also how you update:
+
 ```sh
-./scripts/install.sh      # builds the board, installs to ~/.cursor/plugins/local/goally
+git clone https://github.com/jindratilk/goally ~/.goally/src   # or: git -C ~/.goally/src pull
+sh ~/.goally/src/scripts/install.sh    # --only cursor,claude,codex · --no-start
+goally doctor
 ```
 
-Then reload Cursor (Developer: Reload Window) and run `/goally-setup` in a chat, or `goally doctor` in a terminal.
-
-Optional:
-
-- `grok login` so the Goal Director can run on your Grok subscription.
-- Cursor Settings → Beta → "Allow CLI to access desktop agents", then restart Cursor. With Desktop Bridge on, the director's messages land in the manager chat immediately; otherwise they arrive on the manager's next tool call.
+The runtime lives in `~/.goally/app`. Then reload Cursor (Developer: Reload Window), or start a new Claude Code / Codex session. See [INSTALL.md](INSTALL.md) for the optional Grok Build sign-in and Desktop Bridge.
 
 ## Use
 
-In a Cursor chat: `/goally <big task>`. The board opens at http://127.0.0.1:4777.
+Cursor and Claude Code: `/goally <big task>`. Codex: `$goally <big task>`. The board opens at http://127.0.0.1:4777.
 
 - `goally demo 4` plays a simulated mission on the board.
 - `goally tunnel start` opens a free Cloudflare Quick Tunnel and prints a QR code with a private, read-only phone link (also in the sidebar under Phone access, hover for the QR code).
