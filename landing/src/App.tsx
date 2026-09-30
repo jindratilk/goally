@@ -156,9 +156,9 @@ function MiniBoard() {
   const left = Math.max(1, Math.round((1 - ratio) * 8))
 
   return (
-    <div className="board-enter relative mx-auto w-full max-w-[560px] lg:mx-0 lg:max-w-none">
-      <div className="relative rotate-[1.2deg] overflow-hidden rounded-2xl bg-card shadow-[0_20px_50px_-24px_rgba(38,37,30,0.35)] ring-1 ring-foreground/10">
-        <div className="flex items-center gap-3 border-b border-foreground/8 bg-muted/50 px-3 py-2.5 sm:px-4">
+    <div className="board-enter board-stage relative mx-auto w-full">
+      <div className="board-tilt relative overflow-hidden rounded-2xl bg-card shadow-[0_30px_70px_-30px_rgba(38,37,30,0.35)] ring-1 ring-foreground/10">
+        <div className="flex items-center gap-3 border-b border-foreground/8 bg-muted/50 px-3 py-2.5 sm:px-5 sm:py-3">
           <div className="flex items-center gap-2 text-sm font-medium tracking-tight">
             <LogoMark className="size-4" />
             <span>Ship CSV export</span>
@@ -168,16 +168,16 @@ function MiniBoard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 bg-muted/70 p-2 sm:grid-cols-4 sm:gap-2 sm:p-2.5">
+        <div className="grid grid-cols-2 gap-1.5 bg-muted/70 p-2 sm:grid-cols-4 sm:gap-2 sm:p-2.5 lg:gap-3 lg:p-3">
           {COLUMNS.map((col) => {
             const list = tasks.filter((t) => t.col === col.key)
             return (
-              <div key={col.key} className="flex min-h-[140px] flex-col gap-1.5 rounded-xl bg-muted/80 p-1.5 sm:min-h-[180px]">
-                <div className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] font-medium text-muted-foreground sm:text-[11px]">
+              <div key={col.key} className="flex min-h-[140px] flex-col gap-1.5 rounded-xl bg-muted/80 p-1.5 sm:min-h-[190px] lg:min-h-[230px] lg:gap-2 lg:p-2">
+                <div className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] font-medium text-muted-foreground sm:text-[11px] lg:text-xs">
                   {col.label}
                   <span className="tabnum text-subtle">{list.length}</span>
                 </div>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 lg:gap-2">
                   <AnimatePresence mode="popLayout">
                     {list.map((task) => (
                       <motion.div
@@ -185,9 +185,9 @@ function MiniBoard() {
                         layout={!reduce}
                         layoutId={reduce ? undefined : task.id}
                         transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                        className="flex flex-col gap-1 rounded-lg bg-card p-2 shadow-xs ring-1 ring-foreground/10"
+                        className="flex flex-col gap-1 rounded-lg bg-card p-2 shadow-xs ring-1 ring-foreground/10 lg:gap-1.5 lg:p-2.5"
                       >
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground lg:text-[11px]">
                           <span className="font-mono">{task.id}</span>
                           <span className="ml-auto flex items-center gap-1">
                             {task.live && (
@@ -199,9 +199,9 @@ function MiniBoard() {
                             {task.col === 'launched' && <CheckCircle2 className="size-3 text-success" />}
                           </span>
                         </div>
-                        <div className="text-[11px] leading-snug font-medium sm:text-xs">{task.title}</div>
+                        <div className="text-[11px] leading-snug font-medium sm:text-xs lg:text-[13px]">{task.title}</div>
                         {task.proof && (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success">
+                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success lg:text-[10px]">
                             <CheckCircle2 className="size-2.5" />
                             {task.proof}
                           </span>
@@ -220,13 +220,13 @@ function MiniBoard() {
         {noteVisible && (
           <motion.div
             key="director"
-            initial={reduce ? false : { x: 16, y: 0 }}
+            initial={reduce ? false : { x: -16, y: 0 }}
             animate={{ x: 0, y: 0 }}
-            exit={reduce ? undefined : { x: 12 }}
+            exit={reduce ? undefined : { x: -12 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="absolute -right-1 -bottom-3 z-10 max-w-[240px] -rotate-2 sm:-right-4 sm:bottom-6 sm:max-w-[260px]"
+            className="absolute -bottom-5 -left-1 z-10 max-w-[230px] rotate-2 sm:-bottom-6 sm:-left-5 sm:max-w-[260px] lg:-bottom-7 lg:-left-8"
           >
-            <div className="rounded-xl bg-card p-3 shadow-[0_12px_32px_-16px_rgba(38,37,30,0.45)] ring-1 ring-foreground/10">
+            <div className="rounded-xl bg-card p-3 shadow-[0_12px_32px_-16px_rgba(38,37,30,0.45)] ring-1 ring-foreground/10 lg:p-3.5">
               <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium tracking-wide text-warning uppercase">
                 <Radar className="size-3" />
                 Goal Director
@@ -256,7 +256,7 @@ function CopyInstallButton() {
       onClick={onCopy}
       data-copied={copied ? 'true' : 'false'}
       aria-label={copied ? 'Copied install instructions' : 'Copy install instructions for agents'}
-      className="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-medium text-background shadow-sm transition-[transform,background-color] hover:bg-foreground/90 active:scale-[0.98] focus-visible:outline-offset-2"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-medium text-background shadow-sm transition-[transform,background-color] hover:bg-foreground/90 active:scale-[0.98] focus-visible:outline-offset-2"
     >
       {copied ? <Check className="size-4" aria-hidden /> : <ClipboardCopy className="size-4" aria-hidden />}
       {copied ? 'Copied' : state === 'failed' ? 'Copy blocked, try again' : 'Copy install instructions for agents'}
@@ -292,20 +292,20 @@ export default function App() {
         </a>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-12 px-5 pb-16 pt-6 sm:px-8 lg:flex-row lg:items-center lg:gap-14 lg:pb-20 lg:pt-4">
-        <div className="flex max-w-xl flex-col gap-7 lg:shrink-0">
-          <div className="flex flex-col gap-4">
-            <h1 className="text-[2.35rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.35rem]">
+      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center gap-12 px-5 pb-16 pt-8 sm:px-8 sm:pt-12 lg:gap-14 lg:pb-20 lg:pt-14">
+        <div className="flex max-w-3xl flex-col items-center gap-7 text-center">
+          <div className="flex flex-col items-center gap-4 sm:gap-5">
+            <h1 className="text-[2.3rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-6xl lg:text-[4.25rem]">
               Give Cursor a big goal.
               <br />
               Watch it get done.
             </h1>
-            <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+            <p className="max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
               Goally splits the work, runs parallel subagents, and only counts a task done with proof.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-center">
             <CopyInstallButton />
             <a
               href={GITHUB_URL}
@@ -319,7 +319,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 pb-8 lg:pb-0">
+        <div className="w-full max-w-5xl min-w-0 pb-8 lg:pb-0">
           <MiniBoard />
         </div>
       </main>

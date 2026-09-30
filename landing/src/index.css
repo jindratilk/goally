@@ -85,8 +85,37 @@
   }
 }
 
+@keyframes board-tilt {
+  from {
+    transform: rotateX(var(--tilt-from));
+  }
+  to {
+    transform: rotateX(var(--tilt));
+  }
+}
+
 .board-enter {
   animation: board-enter 0.55s ease-out both;
+}
+
+.board-stage {
+  perspective: 1800px;
+  perspective-origin: 50% 0%;
+}
+
+.board-tilt {
+  --tilt: 3deg;
+  --tilt-from: 7deg;
+  transform: rotateX(var(--tilt));
+  transform-origin: 50% 0%;
+  animation: board-tilt 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (min-width: 640px) {
+  .board-tilt {
+    --tilt: 6deg;
+    --tilt-from: 12deg;
+  }
 }
 
 .live-dot {
@@ -95,6 +124,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .board-enter,
+  .board-tilt,
   .live-dot {
     animation: none;
   }
