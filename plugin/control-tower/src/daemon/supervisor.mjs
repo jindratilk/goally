@@ -220,7 +220,12 @@ export class Supervisor {
       fs.writeFileSync(file.replace(/\.md$/, '.out.json'), r.stdout || r.stderr || '', { mode: 0o600 });
       let out;
       try {
-        out = JSON.parse(r.stdout.trim().split('\n').filter(Boolean).at(-1));
+        const raw = r.stdout.trim();
+        try {
+          out = JSON.parse(raw);
+        } catch {
+          out = JSON.parse(raw.split('\n').filter(Boolean).at(-1));
+        }
       } catch {
         throw new Error((r.stderr || r.stdout || `grok exited ${r.code}`).trim().split('\n').slice(-2).join(' ').slice(0, 240));
       }
