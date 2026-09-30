@@ -315,6 +315,12 @@ export async function startDaemon() {
             m.append('message', { message: { id: `M-${m.state.messages.length + 1}`, from: 'user', severity: body.urgent ? 'high' : 'medium', text: redact(text, 4000) } });
             return send(res, 200, { ok: true });
           }
+          if (sub === '/rename') {
+            const title = redact(String(body.title || '').trim(), 120);
+            if (!title) return send(res, 400, { error: 'title required' });
+            m.append('mission.rename', { title });
+            return send(res, 200, { ok: true });
+          }
           if (sub === '/status') {
             if (!['active', 'paused', 'complete', 'aborted'].includes(body.status)) return send(res, 400, { error: 'bad status' });
             m.append('mission.status', { status: body.status });

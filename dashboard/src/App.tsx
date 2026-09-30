@@ -1,4 +1,4 @@
-import { Bot, CircleCheck, CircleDashed, CircleX, History, ChartColumn, Loader2, Menu, Pause, Play, Radar, ScrollText, Settings, SquareKanban, type LucideIcon } from 'lucide-react'
+import { Bot, CircleCheck, CircleDashed, CircleX, History, ChartColumn, Loader2, Menu, Pause, Pencil, Play, Radar, ScrollText, Settings, SquareKanban, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ import { HistoryView } from '@/components/history'
 import { Overview as OverviewView } from '@/components/overview'
 import { SettingsView } from '@/components/settings'
 import { GoalProgress } from '@/components/goal-progress'
+import { InlineEdit } from '@/components/inline-edit'
 import { Dot, PageHeader, Pill } from '@/components/shared'
 
 const MISSION_VIEWS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -82,7 +83,33 @@ function useScrollFade<T extends HTMLElement>(dep: unknown) {
   return ref
 }
 
-function Sidebar({ overview, mission, missionId, view, go }: { overview: Overview; mission: Mission | null; missionId: string | null; view: string; go: (r: { mission?: string | null; view?: string }) => void }) {
+function MissionRow({ m, active, readOnly, onOpen, onRename }: { m: MissionSummary; active: boolean; readOnly: boolean; onOpen: () => void; onRename: (title: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  if (editing)
+    return (
+      <div className="flex h-8 items-center gap-2 px-1">
+        <InlineEdit value={m.title} onSave={onRename} onDone={() => setEditing(false)} className="flex-1" />
+      </div>
+    )
+  return (
+    <div className={cn('group/row flex h-8 items-center rounded-md transition-colors hover:bg-foreground/5', active ? 'bg-foreground/[0.06] text-foreground' : 'text-muted-foreground')}>
+      <button onClick={onOpen} onDoubleClick={() => !readOnly && setEditing(true)} className="flex h-full min-w-0 flex-1 items-center gap-2.5 px-2 text-left text-sm">
+        <MissionIcon m={m} />
+        <span className="min-w-0 flex-1 truncate">{m.title}</span>
+        <span className={cn('text-[11px] text-subtle tabnum', !readOnly && 'group-hover/row:hidden')}>
+          {m.done}/{m.total}
+        </span>
+      </button>
+      {!readOnly && (
+        <button aria-label="Rename goal" onClick={() => setEditing(true)} className="mr-1 hidden size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground group-hover/row:flex">
+          <Pencil className="size-3.5" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function Sidebar({ overview, mission, missionId, view, go, onRename }: { overview: Overview; mission: Mission | null; missionId: string | null; view: string; go: (r: { mission?: string | null; view?: string }) => void; onRename: (id: string, title: string) => void }) {
   const live = overview.missions.filter((m) => m.status === 'active' || m.status === 'paused')
   const done = overview.missions.filter((m) => !live.includes(m))
   const listRef = useScrollFade<HTMLDivElement>(live.length + done.length)
@@ -99,13 +126,7 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
           {label} <span className="tabnum">{list.length}</span>
         </div>
         {list.map((m) => (
-          <button key={m.id} onClick={() => go({ mission: m.id, view: MISSION_VIEWS.some((v) => v.id === view) ? view : 'board' })} className={cn('flex h-8 items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors hover:bg-foreground/5', m.id === missionId ? 'bg-foreground/[0.06] text-foreground' : 'text-muted-foreground')}>
-            <MissionIcon m={m} />
-            <span className="min-w-0 flex-1 truncate">{m.title}</span>
-            <span className="text-[11px] text-subtle tabnum">
-              {m.done}/{m.total}
-            </span>
-          </button>
+          <MissionRow key={m.id} m={m} active={m.id === missionId} readOnly={overview.remote} onOpen={() => go({ mission: m.id, view: MISSION_VIEWS.some((v) => v.id === view) ? view : 'board' })} onRename={(t) => onRename(m.id, t)} />
         ))}
       </div>
     )
@@ -132,6 +153,23 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
         ))}
       </nav>
     </div>
+  )
+}
+
+function HeaderTitle({ title, readOnly, onRename }: { title: string; readOnly: boolean; onRename: (t: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  if (editing) return <InlineEdit value={title} onSave={onRename} onDone={() => setEditing(false)} className="w-64 max-w-full font-medium" />
+  return (
+    <span className="group/title flex min-w-0 items-center gap-1.5">
+      <span className="truncate font-medium" onDoubleClick={() => !readOnly && setEditing(true)}>
+        {title}
+      </span>
+      {!readOnly && (
+        <button aria-label="Rename goal" onClick={() => setEditing(true)} className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/title:opacity-100 hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100">
+          <Pencil className="size-3.5" />
+        </button>
+      )}
+    </span>
   )
 }
 
@@ -229,6 +267,17 @@ export default function App() {
   }, [mission])
   useEffect(() => setNav(false), [route.view, route.mission])
 
+  const rename = async (id: string, title: string) => {
+    try {
+      await post(`/api/missions/${id}/rename`, { title })
+      toast.success('Goal renamed')
+      ov.refresh()
+      ms.refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   const setStatus = async (status: 'active' | 'paused') => {
     if (!mission) return
     try {
@@ -255,7 +304,7 @@ export default function App() {
       </div>
     )
 
-  const sidebar = <Sidebar overview={overview} mission={mission} missionId={missionId} view={view} go={go} />
+  const sidebar = <Sidebar overview={overview} mission={mission} missionId={missionId} view={view} go={go} onRename={rename} />
   const live = mission && (mission.status === 'active' || mission.status === 'paused')
 
   let body: React.ReactNode
@@ -285,7 +334,7 @@ export default function App() {
           </Button>
           {mission && !global ? (
             <div className="flex min-w-0 items-center gap-3 text-sm">
-              <span className="truncate font-medium">{mission.title}</span>
+              <HeaderTitle title={mission.title} readOnly={readOnly} onRename={(t) => rename(mission.id, t)} />
               {mission.status !== 'active' && <Pill>{mission.status}</Pill>}
               <GoalProgress mission={mission} now={now} />
             </div>

@@ -112,6 +112,9 @@ export function reduce(state, ev) {
     case 'mission.thread':
       state.threadId = ev.threadId;
       break;
+    case 'mission.rename':
+      state.title = String(ev.title || '').trim().slice(0, 120) || state.title;
+      break;
     case 'mission.status':
       state.status = ev.status;
       if (ev.status === 'complete' || ev.status === 'aborted') state.endedAt = ev.t;
