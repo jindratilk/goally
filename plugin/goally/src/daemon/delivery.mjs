@@ -71,7 +71,7 @@ export class Delivery {
     const cli = this.cli();
     if (!cli) return { available: false, reason: 'Cursor CLI not found', threads: [] };
     if (!fs.existsSync(BRIDGE_DIR)) {
-      return { available: false, reason: 'Off · optional. Director messages arrive with the next Goally tool result. If Cursor Settings → Beta shows "Allow CLI to access desktop agents", enable it and restart Cursor.', threads: [] };
+      return { available: false, reason: 'Off · optional. Cursor hooks still deliver: tool results, your prompts, and a new chat turn when the agent stops. If Cursor Settings → Beta shows "Allow CLI to access desktop agents", enable it and restart Cursor.', threads: [] };
     }
     const r = await run(cli, ['desktop', 'ls', '--json'], { timeoutMs: 6000 });
     if (r.code !== 0) return { available: false, reason: (r.stderr || r.stdout || 'desktop ls failed').trim().slice(0, 200), threads: [] };
@@ -143,12 +143,12 @@ export class Delivery {
     return list.map(formatMessage).join('\n\n');
   }
 
-  nextForHook(mission, { all = false } = {}) {
+  nextForHook(mission, { all = false, via = 'hook' } = {}) {
     const cfg = this.getConfig();
     const list = this.pending(mission, cfg).filter((m) => m.status === 'queued' || m.via !== 'hook' || all);
     if (!list.length) return '';
     const pick = all ? list.slice(0, 3) : list.slice(0, 1);
-    for (const m of pick) mission.append('message.status', { id: m.id, status: 'delivered', via: 'hook', attempt: true });
+    for (const m of pick) mission.append('message.status', { id: m.id, status: 'delivered', via, attempt: true });
     return pick.map(formatMessage).join('\n\n');
   }
 }

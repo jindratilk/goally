@@ -5,7 +5,7 @@ Two voices can write to you during a mission:
 - `[GOAL DIRECTOR · M-3 · HIGH · CT-2] …` is the reviewer. After a deep look at the record and the code, it saw a loop, drift, a full build, a task stuck on details, or a "done" without proof. The message includes what it saw and one instruction.
 - `[OPERATOR · M-4] …` is the human, typed on the board.
 
-A message arrives at the end of any Goally tool result. A message about one task goes to whoever calls a tool for that task. In Cursor with Desktop Bridge on, it also arrives as a new turn in this chat. Either way, it outranks whatever you were about to do next.
+A message arrives at the end of any Goally tool result. A message about one task goes to whoever calls a tool for that task. In Cursor it also rides on your other tool results and the operator's prompts, and if one is waiting when your turn ends, it arrives as a new turn in this chat. Either way, it outranks whatever you were about to do next.
 
 Answer with `goally_ack`:
 

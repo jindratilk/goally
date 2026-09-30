@@ -70,8 +70,9 @@ export class HookHandler {
   }
 
   on_beforeSubmitPrompt({ mission, conversationId }) {
-    if (agentOf(mission.state, conversationId) === 'main' && mission.state.conversationId) mission.append('main.prompt', {});
-    return { continue: true };
+    if (agentOf(mission.state, conversationId) !== 'main' || !mission.state.conversationId) return { continue: true };
+    mission.append('main.prompt', {});
+    return this.inject(mission, 'main', { continue: true });
   }
 
   on_subagentStart({ mission, payload, cfg, out }) {
@@ -176,8 +177,11 @@ export class HookHandler {
   on_stop({ mission, payload, conversationId, out }) {
     const s = mission.state;
     if (agentOf(s, conversationId) !== 'main') return out;
-    mission.append('main.stop', { status: payload.status, loopCount: payload.loop_count ?? 0, followup: false });
+    // Without Desktop Bridge this is the only way to put a message into an idle chat: Cursor submits followup_message as the next turn.
+    const loopCount = payload.loop_count ?? 0;
+    const msg = s.status === 'active' && payload.status !== 'aborted' && loopCount < 3 ? this.delivery.nextForHook(mission, { all: true, via: 'followup' }) : '';
+    mission.append('main.stop', { status: payload.status, loopCount, followup: Boolean(msg) });
     this.supervisor.trigger(mission, 'main-stop');
-    return out;
+    return msg ? { followup_message: msg } : out;
   }
 }

@@ -196,7 +196,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
             <CardTitle>Messages to main chat</CardTitle>
             <CardDescription className="flex items-center gap-1.5">
               <Dot tone={overview.bridge.available ? 'success' : 'warning'} />
-              {overview.bridge.available ? 'Desktop Bridge' : 'Hook delivery (bridge off)'}
+              {overview.bridge.available ? 'Desktop Bridge' : 'Cursor hooks + MCP'}
             </CardDescription>
             <CardAction>
               {!readOnly && (
