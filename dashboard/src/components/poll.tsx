@@ -54,8 +54,8 @@ function Ring({ mission }: { mission: Mission }) {
         <span className="label label-sm">Poll</span>
         <motion.span
           key={go ? 'go' : 'nogo'}
-          initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          initial={{ scale: 0.94 }}
+          animate={{ scale: 1 }}
           className={cn('display mt-1 text-[54px] sm:text-[62px]', go ? 'text-go' : 'text-ink')}
         >
           {go ? 'GO' : 'NO-GO'}

@@ -50,8 +50,8 @@ async function main() {
     case 'open': {
       const { ensureDaemon } = await import('../src/client.mjs');
       await ensureDaemon();
-      spawn('open', [LOCAL_URL], { stdio: 'ignore', detached: true }).unref();
-      console.log(LOCAL_URL);
+      if (rest.includes('--system')) spawn('open', [LOCAL_URL], { stdio: 'ignore', detached: true }).unref();
+      console.log(`${LOCAL_URL}  · open it in the Cursor browser (system browser: tower open --system)`);
       return;
     }
     case 'status': {

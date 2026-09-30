@@ -36,8 +36,8 @@ export function Fleet({ mission, config, now }: { mission: Mission; config: Conf
           <motion.div
             key={a.id}
             layout
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ x: -8 }}
+            animate={{ x: 0 }}
             className="scan grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 rounded-[4px] border border-line px-3 py-2.5"
           >
             <Dot tone="ink" pulse />

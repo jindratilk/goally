@@ -33,8 +33,8 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
     <motion.button
       layout
       layoutId={task.id}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ y: 8 }}
+      animate={{ y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 260, damping: 28 }}
       onClick={onOpen}
@@ -91,10 +91,10 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
           <span>waits for {blockedBy.join(', ')}</span>
         ) : agents.length ? (
           <span>
-            {agents.length} agent run{agents.length > 1 ? 's' : ''} · {ago(task.updatedAt, now)}
+            {agents.length} agent run{agents.length > 1 ? 's' : ''} · {ago(task.updatedAt || task.doneAt || task.startedAt, now)}
           </span>
         ) : (
-          <span>{task.status === 'todo' ? 'not launched' : ago(task.updatedAt, now)}</span>
+          <span>{task.status === 'todo' ? 'not launched' : ago(task.updatedAt || task.doneAt || task.startedAt, now)}</span>
         )}
       </div>
     </motion.button>

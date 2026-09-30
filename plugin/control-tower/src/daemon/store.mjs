@@ -178,6 +178,7 @@ export function reduce(state, ev) {
         if (!task.agentIds.includes(a.id)) task.agentIds.push(a.id);
         task.owner = a.id;
         if (!task.startedAt) task.startedAt = ev.t;
+        task.updatedAt = ev.t;
         recalcTaskFromAgents(state, task);
       }
       state.parallel.push({ t: ev.t, n: runningCount(state) });
@@ -196,6 +197,7 @@ export function reduce(state, ev) {
       a.summary = String(ev.summary || '');
       if (ev.transcript) a.transcript = ev.transcript;
       const task = findTask(state, a.taskId);
+      if (task) task.updatedAt = ev.t;
       recalcTaskFromAgents(state, task);
       state.parallel.push({ t: ev.t, n: runningCount(state) });
       const level = a.status === 'completed' ? 'ok' : 'error';

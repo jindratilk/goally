@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -52,21 +51,20 @@ export async function runMcp() {
     {
       title: 'Start mission',
       description:
-        'Start a Control Tower mission after auditing a large request. Registers the task board (IDs CT-1..n in the given order), opens the live dashboard and binds this chat as the mission manager. Call once per mission, before launching subagents.',
+        'Start a Control Tower mission after auditing a large request. Registers the task board (IDs CT-1..n in the given order), returns the live dashboard URL and binds this chat as the mission manager. Call once per mission, before launching subagents.',
       inputSchema: {
         title: z.string().describe('Mission name, max ~8 words'),
         goal: z.string().describe("The operator's request, verbatim or faithfully summarized, including constraints and definition of done"),
         tasks: z.array(Task).min(1).max(60),
         workspace: z.string().optional().describe('Absolute workspace root; defaults to the first MCP root'),
-        openDashboard: z.boolean().optional().describe('Open the board in the browser (default true)'),
       },
     },
     wrap(async (a) => {
       const ws = await workspace(a.workspace);
       const r = await rpc('startRun', { title: a.title, goal: a.goal, tasks: a.tasks, workspace: ws });
-      if (a.openDashboard !== false) spawn('open', [r.url], { stdio: 'ignore', detached: true }).unref();
       const lines = [
         `Mission ${r.missionId} is live. Board: ${r.url}${r.remoteUrl ? ` · phone: ${r.remoteUrl}` : ''}`,
+        'Open the board for the operator in the Cursor built-in browser (browser tool), never with the system `open` command.',
         `Parallel agent limit: ${r.maxParallelAgents}.`,
         '',
         'Cards:',

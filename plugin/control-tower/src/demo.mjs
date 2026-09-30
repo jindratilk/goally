@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { call, ensureDaemon } from './client.mjs';
 import { LOCAL_URL, paths } from './paths.mjs';
 
@@ -41,7 +40,6 @@ export async function runDemo({ speed = 1 } = {}) {
     ],
   });
   const id = r.missionId;
-  spawn('open', [`${LOCAL_URL}/#/m/${id}`], { stdio: 'ignore', detached: true }).unref();
   console.log(`Demo mission ${id} · ${LOCAL_URL}/#/m/${id}`);
 
   await main('postToolUse', { tool_name: 'MCP:tower_start_run', tool_input: {}, tool_output: '{}' });

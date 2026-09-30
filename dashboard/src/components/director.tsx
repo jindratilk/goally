@@ -107,8 +107,8 @@ export function FlightDirector({ mission, overview, config, now, readOnly }: { m
                 <motion.div
                   key={f.id}
                   layout
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ y: -6 }}
+                  animate={{ y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   className={cn('rounded-[4px] border p-3', f.severity === 'high' ? 'hatch-nogo border-nogo/40' : 'hatch-warn border-warn/40')}
                 >
