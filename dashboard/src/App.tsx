@@ -61,9 +61,31 @@ function NavItem({ active, icon: Icon, label, badge, badgeTone, onClick }: { act
   )
 }
 
+function useScrollFade<T extends HTMLElement>(dep: unknown) {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => {
+      el.toggleAttribute('data-fade-top', el.scrollTop > 2)
+      el.toggleAttribute('data-fade-bottom', el.scrollTop + el.clientHeight < el.scrollHeight - 2)
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [dep])
+  return ref
+}
+
 function Sidebar({ overview, mission, missionId, view, go }: { overview: Overview; mission: Mission | null; missionId: string | null; view: string; go: (r: { mission?: string | null; view?: string }) => void }) {
   const live = overview.missions.filter((m) => m.status === 'active' || m.status === 'paused')
-  const done = overview.missions.filter((m) => !live.includes(m)).slice(0, 6)
+  const done = overview.missions.filter((m) => !live.includes(m))
+  const listRef = useScrollFade<HTMLDivElement>(live.length + done.length)
   const openFindings = mission?.findings.filter((f) => f.status === 'open').length ?? 0
   const badge: Record<string, number | undefined> = {
     board: mission ? mission.verdict.total - mission.verdict.done : undefined,
@@ -100,7 +122,7 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
           ))}
         </nav>
       )}
-      <div className="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1">
+      <div ref={listRef} className="scroll-fade -mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1">
         {group('Active goals', live)}
         {group('Finished', done)}
       </div>
