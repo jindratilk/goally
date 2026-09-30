@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import type { Agent, Mission, Task, TaskStatus } from '@/lib/api'
 import { ago, dur, shortPath } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dot, Segmented, TASK_META, TaskBadge } from './shared'
@@ -123,6 +124,7 @@ const UI_FILE = /\.(tsx|jsx|vue|svelte|css|scss|html|swift|xib|storyboard)$/i
 
 function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
   const [failed, setFailed] = useState(false)
+  const [open, setOpen] = useState(false)
   const src = /^https?:\/\//.test(ref_) ? ref_ : `/api/missions/${missionId}/shot?ref=${encodeURIComponent(ref_)}`
   if (failed)
     return (
@@ -133,9 +135,17 @@ function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
       </div>
     )
   return (
-    <a href={src} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10">
-      <img src={src} alt={ref_} onError={() => setFailed(true)} className="max-h-[60vh] w-full object-contain" />
-    </a>
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="block w-full cursor-zoom-in overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 transition-shadow hover:shadow-md">
+        <img src={src} alt={ref_} onError={() => setFailed(true)} className="max-h-[60vh] w-full object-contain" />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[92vh] w-auto max-w-[94vw] gap-0 overflow-hidden bg-card p-0 sm:max-w-[94vw]">
+          <DialogTitle className="sr-only">Screenshot</DialogTitle>
+          <img src={src} alt={ref_} className="max-h-[92vh] max-w-[94vw] object-contain" />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
