@@ -173,6 +173,23 @@ export function parseVerdict(text) {
   }
 }
 
+/** Last resort when the reply is prose: pull the wall-clock estimate out of sentences like "180 to 240 minutes" or "2.5 to 4 hours". */
+export function etaFromProse(text) {
+  const t = String(text || '');
+  const range = (re, mult) => {
+    const all = [...t.matchAll(re)];
+    const m = all.at(-1);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const b = m[2] ? Number(m[2]) : a;
+    return Math.round(((a + b) / 2) * mult);
+  };
+  const minutes = range(/(\d+(?:\.\d+)?)\s*(?:to|-|–)\s*(\d+(?:\.\d+)?)\s*min/gi, 1) ?? range(/(\d+(?:\.\d+)?)\s*(?:to|-|–)\s*(\d+(?:\.\d+)?)\s*hours?/gi, 60) ?? range(/(\d+)()\s*min(?:utes)?\b/gi, 1);
+  if (minutes == null || minutes <= 0 || minutes >= 10000) return null;
+  const sentence = t.split(/(?<=[.!?])\s+/).reverse().find((x) => /min|hour/i.test(x)) || '';
+  return { minutes, reason: sentence.trim().slice(0, 300) };
+}
+
 export class Supervisor {
   constructor({ registry, delivery, getConfig, log }) {
     this.registry = registry;
@@ -280,8 +297,25 @@ export class Supervisor {
         throw new Error((r.stderr || r.stdout || `grok exited ${r.code}`).trim().split('\n').slice(-2).join(' ').slice(0, 240));
       }
       if (out.type === 'error' || (r.code !== 0 && !out.text)) throw new Error(String(out.message || `grok exited ${r.code}`).split('\n')[0]);
-      const parsed = parseVerdict(out.text);
-      if (!parsed) throw new Error('Goal Director reply was not valid JSON');
+      let parsed = parseVerdict(out.text);
+      if (!parsed && out.sessionId) {
+        const fix = await this.exec(bin, [
+          '-p', 'Your last reply was prose. Reply now with ONLY the JSON object in the required output format, based on the review you just did. No tools, no prose, no code fence.',
+          '--output-format', 'json', '--tools', 'read_file', '--max-turns', '1', '--cwd', s.workspace, '--no-auto-update', '--resume', out.sessionId,
+          ...(cfg.supervisor.model ? ['-m', cfg.supervisor.model] : []),
+        ], 120000, s.workspace);
+        try {
+          const raw = fix.stdout.trim();
+          let o2;
+          try { o2 = JSON.parse(raw); } catch { o2 = JSON.parse(raw.split('\n').filter(Boolean).at(-1)); }
+          parsed = parseVerdict(o2.text);
+        } catch {}
+      }
+      if (!parsed) {
+        const eta = etaFromProse(`${out.text || ''} ${out.thought || ''}`);
+        if (!eta) throw new Error('Goal Director reply was not valid JSON');
+        parsed = { summary: String(out.text || '').trim().split(/(?<=[.!?])\s+/)[0].slice(0, 300), eta, findings: [], resolved: [] };
+      }
       this.apply(mission, parsed, cfg);
       mission.append('supervisor.run', {
         ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary, eta: parsed.eta, reason,
