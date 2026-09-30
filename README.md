@@ -20,7 +20,7 @@ Optional:
 In a Cursor chat: `/goally <big task>`. The board opens at http://127.0.0.1:4777.
 
 - `goally demo 4` plays a simulated mission on the board.
-- `goally tunnel start` opens a free Cloudflare Quick Tunnel and prints a QR code with a private, read-only phone link (also in Settings → Remote access).
+- `goally tunnel start` opens a free Cloudflare Quick Tunnel and prints a QR code with a private, read-only phone link (also in the sidebar under Phone access, hover for the QR code).
 - `goally send "<text>"` messages the manager from the terminal.
 
 ## How it fits together

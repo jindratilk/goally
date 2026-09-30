@@ -1,14 +1,11 @@
-import QRCode from 'qrcode'
-import { Copy, Loader2, RefreshCw, Smartphone } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { post, type Config, type Overview, type TunnelInfo } from '@/lib/api'
-import { Button } from '@/components/ui/button'
+import { post, type Config, type Overview } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { Dot, Segmented } from './shared'
+import { Segmented } from './shared'
 
 function Field({ label, hint, children, wide }: { label: string; hint?: ReactNode; children: ReactNode; wide?: boolean }) {
   return (
@@ -45,67 +42,6 @@ function Section({ title, description, children }: { title: string; description?
       </CardHeader>
       <CardContent className="divide-y">{children}</CardContent>
     </Card>
-  )
-}
-
-function RemoteAccess({ tunnel, readOnly }: { tunnel: TunnelInfo; readOnly: boolean }) {
-  const [busy, setBusy] = useState(false)
-  const canvas = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    if (tunnel.phoneUrl && canvas.current) QRCode.toCanvas(canvas.current, tunnel.phoneUrl, { width: 168, margin: 1, color: { dark: '#26251e', light: '#ffffff' } })
-  }, [tunnel.phoneUrl, tunnel.status])
-  const act = async (action: 'start' | 'stop' | 'rotate') => {
-    setBusy(true)
-    try {
-      const r = await post<TunnelInfo>('/api/tunnel', { action })
-      if (action === 'start') r.status === 'up' ? toast.success('Tunnel up', { description: r.hostname ?? '' }) : toast.error(r.error || 'Tunnel did not come up')
-      if (action === 'rotate') toast.success('New private link', { description: 'Old phone links stop working' })
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  if (readOnly) return <p className="py-4 text-sm text-muted-foreground">You are viewing through the phone link. Manage it from your Mac.</p>
-  const up = tunnel.status === 'up' || tunnel.status === 'starting'
-  return (
-    <div className="flex flex-col gap-4 py-4">
-      <div className="flex items-center gap-3">
-        <Dot tone={tunnel.status === 'up' ? 'success' : tunnel.status === 'starting' ? 'warning' : tunnel.status === 'error' ? 'danger' : 'neutral'} pulse={tunnel.status === 'starting'} />
-        <span className="min-w-0 flex-1 truncate text-sm">
-          {tunnel.status === 'up' ? tunnel.hostname : tunnel.status === 'starting' ? 'Opening tunnel…' : tunnel.status === 'error' ? tunnel.error : 'Off, only this Mac can see the board'}
-        </span>
-        <Button size="sm" variant={up ? 'outline' : 'default'} disabled={busy} onClick={() => act(up ? 'stop' : 'start')}>
-          {busy ? <Loader2 className="animate-spin" /> : !up && <Smartphone />}
-          {up ? 'Stop' : 'Start'}
-        </Button>
-      </div>
-      {tunnel.status === 'up' && tunnel.phoneUrl && (
-        <div className="flex flex-col items-center gap-4 rounded-lg bg-muted p-4 sm:flex-row sm:items-start">
-          <canvas ref={canvas} className="rounded-md" />
-          <div className="flex min-w-0 flex-col gap-3">
-            <div className="text-sm font-medium">Scan with your phone</div>
-            <code className="block font-mono text-xs break-all text-muted-foreground">{tunnel.phoneUrl}</code>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(tunnel.phoneUrl!)
-                  toast.success('Private link copied')
-                }}
-              >
-                <Copy /> Copy
-              </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => act('rotate')}>
-                <RefreshCw /> New key
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">Free trycloudflare.com tunnel, no account needed. The phone view is read-only and the address changes when the tunnel restarts.</p>
-    </div>
   )
 }
 
@@ -157,10 +93,6 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
         <Field label="Interrupt on high severity" hint={`Sends with --force, at most once every ${cfg.delivery.forceCooldownMin} min.`}>
           <Switch checked={cfg.delivery.forceOnHigh} disabled={ro} onCheckedChange={(v) => save({ delivery: { forceOnHigh: v } })} />
         </Field>
-      </Section>
-
-      <Section title="Phone access" description="Watch the board from anywhere through Cloudflare.">
-        <RemoteAccess tunnel={overview.tunnel} readOnly={ro} />
       </Section>
     </div>
   )

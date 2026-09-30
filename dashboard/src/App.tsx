@@ -15,6 +15,7 @@ import { HistoryView } from '@/components/history'
 import { Overview as OverviewView } from '@/components/overview'
 import { SettingsView } from '@/components/settings'
 import { GoalProgress } from '@/components/goal-progress'
+import { PhoneAccess } from '@/components/phone-access'
 import { InlineEdit } from '@/components/inline-edit'
 import { Dot, PageHeader, Pill } from '@/components/shared'
 
@@ -151,6 +152,7 @@ function Sidebar({ overview, mission, missionId, view, go, onRename }: { overvie
         {GLOBAL_VIEWS.map((v) => (
           <NavItem key={v.id} active={view === v.id} icon={v.icon} label={v.label} onClick={() => go({ view: v.id })} />
         ))}
+        {!overview.remote && <PhoneAccess tunnel={overview.tunnel} />}
       </nav>
     </div>
   )
@@ -293,7 +295,7 @@ export default function App() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Private link required</h1>
-        <p className="text-muted-foreground">Scan the QR code in Settings → Phone access on your Mac.</p>
+        <p className="text-muted-foreground">Hover Phone access in the sidebar on your Mac to get the QR code.</p>
       </div>
     )
 
