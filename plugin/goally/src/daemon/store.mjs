@@ -27,12 +27,15 @@ function findTask(state, id) {
   return id ? state.tasks.find((t) => t.id === id) : undefined;
 }
 
-function recalcTaskFromAgents(state, task) {
-  if (!task || task.status === 'done' || task.status === 'blocked') return;
-  const agents = task.agentIds.map((id) => state.agents[id]).filter(Boolean);
-  if (agents.some((a) => a.status === 'running')) task.status = 'running';
-  else if (agents.length && agents.every((a) => a.status === 'error' || a.status === 'aborted')) task.status = 'failed';
-  else if (agents.some((a) => a.status === 'completed')) task.status = 'review';
+function addLane(state, lane) {
+  if (lane && !state.lanes.includes(lane)) state.lanes.push(lane);
+}
+
+const REPORT_KINDS = ['progress', 'decision', 'blocker', 'result', 'claim', 'check', 'status'];
+
+function report(task, ev, fields) {
+  task.notes.push({ t: ev.t, by: ev.by || null, kind: REPORT_KINDS.includes(fields.kind) ? fields.kind : 'progress', text: String(fields.text || ''), attachments: fields.attachments || [], ...fields.extra });
+  if (task.notes.length > 200) task.notes.splice(0, task.notes.length - 200);
 }
 
 export function initialState(ev) {
@@ -43,12 +46,15 @@ export function initialState(ev) {
     goal: m.goal,
     workspace: m.workspace,
     conversationId: m.conversationId || null,
+    harness: m.harness || null,
     threadId: null,
     status: 'active',
     startedAt: ev.t,
     endedAt: null,
     updatedAt: ev.t,
     tasks: [],
+    lanes: [],
+    eta: null,
     agents: {},
     main: { status: 'working', lastActivityAt: ev.t, lastTool: null, toolCalls: 0, stops: 0 },
     tools: [],
@@ -78,7 +84,7 @@ function makeTask(t, i) {
     acceptance: String(t.acceptance || ''),
     verify: String(t.verify || ''),
     depends: Array.isArray(t.depends) ? t.depends.map(String) : [],
-    lane: t.lane ? String(t.lane) : '',
+    lane: t.lane ? String(t.lane).trim().toLowerCase() : '',
     status: 'todo',
     owner: null,
     agentIds: [],
@@ -95,6 +101,8 @@ export function reduce(state, ev) {
   if (ev.type === 'mission.start') {
     state = initialState(ev);
     ev.tasks?.forEach((t, i) => state.tasks.push(makeTask(t, i)));
+    for (const l of ev.lanes || []) addLane(state, String(l).trim().toLowerCase());
+    for (const t of state.tasks) addLane(state, t.lane);
     note(state, ev, 'mission', `Mission start · ${state.tasks.length} tasks`, { level: 'info' });
     return state;
   }
@@ -124,6 +132,7 @@ export function reduce(state, ev) {
     case 'task.add': {
       const task = makeTask({ ...ev.task, id: ev.task.id || `CT-${state.tasks.length + 1}` }, state.tasks.length);
       state.tasks.push(task);
+      addLane(state, task.lane);
       note(state, ev, 'task', `${task.id} added · ${task.title}`, { taskId: task.id });
       break;
     }
@@ -132,16 +141,67 @@ export function reduce(state, ev) {
       if (!task) break;
       if (ev.status) task.status = ev.status;
       if (ev.owner) task.owner = ev.owner;
-      if (ev.note) task.notes.push({ t: ev.t, text: ev.note });
+      for (const k of ['title', 'description', 'acceptance', 'verify']) if (typeof ev[k] === 'string' && ev[k].trim()) task[k] = k === 'title' ? short(ev[k], 120) : ev[k];
+      if (Array.isArray(ev.depends)) task.depends = ev.depends.map(String);
+      if (typeof ev.lane === 'string') {
+        task.lane = ev.lane.trim().toLowerCase();
+        addLane(state, task.lane);
+      }
+      if (ev.note || ev.status) report(task, ev, { kind: ev.status === 'blocked' ? 'blocker' : 'status', text: ev.note || '', extra: ev.status ? { status: ev.status } : {} });
       if (ev.status === 'running' && !task.startedAt) task.startedAt = ev.t;
       task.updatedAt = ev.t;
-      note(state, ev, 'task', `${task.id} → ${String(ev.status || 'note').toUpperCase()}${ev.note ? ` · ${short(ev.note, 90)}` : ''}`, { taskId: task.id });
+      note(state, ev, 'task', `${task.id} → ${String(ev.status || 'edit').toUpperCase()}${ev.note ? ` · ${short(ev.note, 90)}` : ''}`, { taskId: task.id });
       break;
     }
+    case 'task.claim': {
+      const task = findTask(state, ev.taskId);
+      if (!task) break;
+      task.owner = ev.by;
+      task.status = 'running';
+      if (!task.startedAt) task.startedAt = ev.t;
+      task.updatedAt = ev.t;
+      report(task, ev, { kind: 'claim', text: `Claimed by ${ev.by}` });
+      note(state, ev, 'task', `${task.id} claimed by ${ev.by}`, { taskId: task.id });
+      break;
+    }
+    case 'task.report': {
+      const task = findTask(state, ev.taskId);
+      if (!task) break;
+      report(task, ev, { kind: ev.kind, text: ev.text, attachments: ev.attachments });
+      if (ev.kind === 'blocker' && task.status !== 'done') task.status = 'blocked';
+      task.updatedAt = ev.t;
+      note(state, ev, 'report', `${task.id} ${ev.kind} · ${short(ev.text, 90)}`, { taskId: task.id, level: ev.kind === 'blocker' ? 'warn' : 'info' });
+      break;
+    }
+    case 'task.check': {
+      const task = findTask(state, ev.taskId);
+      const c = state.counters;
+      if (ev.ok) {
+        c.testsPass += 1;
+        state.lastGreenTestAt = ev.t;
+      } else c.testsFail += 1;
+      if (ev.targeted) c.targetedTests += 1;
+      else c.broadTests += 1;
+      if (ev.full) c.fullBuilds += 1;
+      if (task) {
+        task.lastCheck = { t: ev.t, ok: ev.ok, command: ev.command, exitCode: ev.exitCode, durationMs: ev.durationMs, fingerprint: ev.fingerprint || null, files: ev.files || [], cwd: ev.cwd || null, by: ev.by || null };
+        report(task, ev, { kind: 'check', text: `${ev.ok ? 'PASS' : 'FAIL'} · ${ev.command}`, extra: { ok: ev.ok, exitCode: ev.exitCode, durationMs: ev.durationMs, output: ev.output || '' } });
+        if (task.status === 'running' && ev.ok) task.status = 'review';
+        task.updatedAt = ev.t;
+      }
+      note(state, ev, 'test', `${ev.taskId || 'check'} ${ev.ok ? 'PASS' : 'FAIL'} · ${short(ev.command, 80)}`, { taskId: ev.taskId, level: ev.ok ? 'ok' : 'error' });
+      break;
+    }
+    case 'mission.lanes':
+      state.lanes = [];
+      for (const l of ev.lanes || []) addLane(state, String(l).trim().toLowerCase());
+      for (const t of state.tasks) addLane(state, t.lane);
+      break;
     case 'task.complete': {
       const task = findTask(state, ev.taskId);
       if (!task) break;
-      task.evidence.push(...(ev.evidence || []).map((e) => ({ ...e, t: ev.t })));
+      if (ev.accepted) task.evidence = (ev.evidence || []).map((e) => ({ ...e, t: ev.t }));
+      if (ev.summary) report(task, ev, { kind: 'result', text: ev.summary });
       task.proof = { ok: ev.accepted, reason: ev.reason, at: ev.t };
       task.updatedAt = ev.t;
       if (ev.accepted) {
@@ -180,9 +240,7 @@ export function reduce(state, ev) {
       if (task) {
         if (!task.agentIds.includes(a.id)) task.agentIds.push(a.id);
         task.owner = a.id;
-        if (!task.startedAt) task.startedAt = ev.t;
         task.updatedAt = ev.t;
-        recalcTaskFromAgents(state, task);
       }
       state.parallel.push({ t: ev.t, n: runningCount(state) });
       note(state, ev, 'agent', `${a.taskId || 'AGENT'} launched · ${short(a.task, 90)}`, { taskId: a.taskId, agent: a.id });
@@ -201,7 +259,6 @@ export function reduce(state, ev) {
       if (ev.transcript) a.transcript = ev.transcript;
       const task = findTask(state, a.taskId);
       if (task) task.updatedAt = ev.t;
-      recalcTaskFromAgents(state, task);
       state.parallel.push({ t: ev.t, n: runningCount(state) });
       const level = a.status === 'completed' ? 'ok' : 'error';
       if (a.status !== 'completed') state.counters.failures += 1;
@@ -341,6 +398,7 @@ export function reduce(state, ev) {
       if (ev.sessionId) s.sessionId = ev.sessionId;
       if (ev.costUsd) s.costUsd += ev.costUsd;
       s.lastSummary = ev.summary || s.lastSummary || '';
+      if (ev.eta && Number.isFinite(ev.eta.minutes)) state.eta = { minutes: ev.eta.minutes, reason: ev.eta.reason || '', at: ev.t };
       note(state, ev, 'supervisor', ev.ok ? `Goal Director check · ${ev.findings ?? 0} findings${ev.summary ? ` · ${short(ev.summary, 80)}` : ''}` : `Goal Director offline · ${short(ev.error, 90)}`, { level: ev.ok ? 'info' : 'error' });      break;
     }
     case 'supervisor.skip':

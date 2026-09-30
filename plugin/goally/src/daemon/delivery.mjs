@@ -36,7 +36,7 @@ function run(cmd, args, { input, timeoutMs = 8000 } = {}) {
 
 export function formatMessage(m) {
   const head = [m.from === 'user' ? 'OPERATOR' : 'GOAL DIRECTOR', m.id, m.severity?.toUpperCase(), m.taskId].filter(Boolean).join(' · ');
-  return `[${head}] ${m.text}\n\nAcknowledge with the MCP tool goally_ack (messageId "${m.id}", decision accepted | rejected | resolved, short note).`;
+  return `[${head}] ${m.text}\n\nAcknowledge with goally_ack (messageId "${m.id}", decision accepted | rejected | resolved, short note).`;
 }
 
 export class Delivery {
@@ -134,6 +134,13 @@ export class Delivery {
     } finally {
       this.busy.delete(mission.id);
     }
+  }
+
+  /** Messages piggyback on Goally MCP results, so they reach any harness. Task-scoped calls only get that task's messages. */
+  nextForCall(mission, { taskId = null } = {}) {
+    const list = this.pending(mission, this.getConfig()).filter((m) => !taskId || m.taskId === taskId).slice(0, 3);
+    for (const m of list) mission.append('message.status', { id: m.id, status: 'delivered', via: 'mcp', attempt: true });
+    return list.map(formatMessage).join('\n\n');
   }
 
   nextForHook(mission, { all = false } = {}) {

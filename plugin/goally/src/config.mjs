@@ -10,8 +10,8 @@ export const DEFAULTS = {
     model: '',
     effort: 'medium',
     triggerOnAgentStop: true,
-    maxTurns: 12,
-    timeoutSec: 300,
+    maxTurns: 24,
+    timeoutSec: 600,
   },
   // observe: findings only on the board · message: also write into the manager chat
   intervention: 'message',

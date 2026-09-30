@@ -3,6 +3,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type TaskStatus = 'todo' | 'running' | 'review' | 'blocked' | 'failed' | 'done'
 
 export interface Evidence { kind: string; ref: string; t: number }
+export interface Attachment { kind: 'screenshot' | 'file' | 'url' | 'log'; ref: string; label?: string }
+export interface TaskNote {
+  t: number
+  text: string
+  by?: string | null
+  kind?: 'progress' | 'decision' | 'blocker' | 'result' | 'claim' | 'check' | 'status'
+  attachments?: Attachment[]
+  status?: string
+  ok?: boolean
+  exitCode?: number | null
+  durationMs?: number
+  output?: string
+}
 export interface Task {
   id: string
   title: string
@@ -14,7 +27,8 @@ export interface Task {
   status: TaskStatus
   owner: string | null
   agentIds: string[]
-  notes: { t: number; text: string; status?: string }[]
+  notes: TaskNote[]
+  lastCheck?: { t: number; ok: boolean; command: string; exitCode: number | null; durationMs: number; by: string | null } | null
   evidence: Evidence[]
   proof: { ok: boolean; reason: string; at: number } | null
   startedAt: number | null
@@ -89,6 +103,9 @@ export interface Mission {
   endedAt: number | null
   updatedAt: number
   tasks: Task[]
+  lanes?: string[]
+  harness?: string | null
+  eta?: { minutes: number; reason: string; at: number } | null
   agents: Agent[]
   main: { status: string; lastActivityAt: number | null; lastTool: string | null; toolCalls: number; stops: number }
   files: FileTouch[]

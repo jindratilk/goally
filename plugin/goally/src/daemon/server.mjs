@@ -4,7 +4,9 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { ensureToken, loadConfig, saveConfig } from '../config.mjs';
+import { workspaceFingerprint } from '../fingerprint.mjs';
 import { HOST, LOCAL_URL, PORT, ensureHome, paths, readJson, writeJsonAtomic } from '../paths.mjs';
+import { classifyCommand } from './classify.mjs';
 import { Delivery } from './delivery.mjs';
 import { HookHandler, defaultResponse } from './hooks.mjs';
 import { redact } from './redact.mjs';
@@ -80,9 +82,15 @@ function evaluateProof(state, task, evidence) {
   const hardRef = evidence.some((e) => ['commit', 'url', 'deploy', 'screenshot'].includes(e.kind) && e.ref);
   const greenAfterEdit = state.lastGreenTestAt && (!state.lastEditAt || state.lastGreenTestAt >= state.lastEditAt);
   if (kinds.has('test')) {
-    if (greenAfterEdit) return { accepted: true, reason: 'Passing test recorded after the last edit' };
-    if (!state.lastGreenTestAt) return { accepted: false, reason: 'No passing test was observed by the hooks. Run the targeted test in the terminal, then complete again.' };
-    return { accepted: false, reason: 'Files changed after the last passing test. Re-run the targeted test, then complete again.' };
+    const c = task.lastCheck;
+    if (c?.ok) {
+      const now = c.fingerprint ? workspaceFingerprint(c.cwd || state.workspace, c.files) : null;
+      if (!c.fingerprint || now === c.fingerprint) return { accepted: true, reason: `Check passed: ${c.command}` };
+      return { accepted: false, reason: `Files changed after the passing check (${c.command}). Run goally_check again, then complete.` };
+    }
+    if (greenAfterEdit && state.lastEditAt) return { accepted: true, reason: 'Passing test recorded by hooks after the last edit' };
+    if (c && !c.ok) return { accepted: false, reason: `Last check failed (exit ${c.exitCode}): ${c.command}. Fix it and run goally_check again.` };
+    return { accepted: false, reason: 'No passing check for this task. Run goally_check with its targeted command, then complete.' };
   }
   if (hardRef) return { accepted: true, reason: 'Verifiable reference provided' };
   if (/manual|none/i.test(task.verify) && kinds.has('note')) return { accepted: true, reason: 'Manual verification per task' };
@@ -115,6 +123,17 @@ export async function startDaemon() {
   }, 60000);
   flushTimer.unref();
 
+  const findTask = (m, id) => {
+    const task = m.state.tasks.find((t) => t.id === String(id || '').toUpperCase());
+    if (!task) throw Object.assign(new Error(`Unknown task ${id}. Tasks: ${m.state.tasks.map((t) => t.id).join(', ')}`), { status: 404 });
+    return task;
+  };
+  const agentName = (v) => redact(String(v || 'agent').trim(), 60) || 'agent';
+  const lanesOf = (v) => (Array.isArray(v) ? v.map((l) => String(l).trim().toLowerCase()).filter(Boolean).slice(0, 12) : []);
+  const ATTACH_KINDS = ['screenshot', 'file', 'url', 'log'];
+  const attachmentsOf = (v) =>
+    (Array.isArray(v) ? v : []).slice(0, 10).map((a) => ({ kind: ATTACH_KINDS.includes(a?.kind) ? a.kind : 'file', ref: redact(String(a?.ref || ''), 400), label: a?.label ? redact(String(a.label), 120) : undefined })).filter((a) => a.ref);
+
   const remoteUrl = () => (tunnel.state.status === 'up' ? `https://${tunnel.state.hostname}` : null);
   const urlFor = (m) => `${LOCAL_URL}/#/m/${m.id}`;
 
@@ -134,45 +153,108 @@ export async function startDaemon() {
         goal: redact(String(body.goal), 20000),
         workspace: body.workspace,
         conversationId: body.conversationId,
+        harness: body.harness ? String(body.harness).slice(0, 60) : null,
+        lanes: lanesOf(body.lanes),
         tasks: tasks.slice(0, 60).map((t, i) => ({ ...t, id: `CT-${i + 1}` })),
       });
+      supervisor.kickoff(m);
       return {
         missionId: m.id,
         url: urlFor(m),
         remoteUrl: remoteUrl() ? `${remoteUrl()}/#/m/${m.id}` : null,
         maxParallelAgents: config.maxParallelAgents,
-        tasks: m.state.tasks.map((t) => ({ id: t.id, title: t.title, depends: t.depends })),
+        lanes: m.state.lanes,
+        tasks: m.state.tasks.map((t) => ({ id: t.id, title: t.title, lane: t.lane, depends: t.depends })),
       };
     },
     addTask(body) {
       const m = missionFrom(body);
-      m.append('task.add', { task: { title: body.title, description: body.description, acceptance: body.acceptance, verify: body.verify, depends: body.depends } });
+      m.append('task.add', { task: { title: body.title, description: body.description, acceptance: body.acceptance, verify: body.verify, depends: body.depends, lane: body.lane } });
       return { taskId: m.state.tasks.at(-1).id };
+    },
+    setLanes(body) {
+      const m = missionFrom(body);
+      m.append('mission.lanes', { lanes: lanesOf(body.lanes) });
+      return { lanes: m.state.lanes };
     },
     updateTask(body) {
       const m = missionFrom(body);
-      const task = m.state.tasks.find((t) => t.id === String(body.taskId).toUpperCase());
-      if (!task) throw Object.assign(new Error(`Unknown task ${body.taskId}`), { status: 404 });
+      const task = findTask(m, body.taskId);
       if (body.status && !TASK_STATUSES.includes(body.status)) throw Object.assign(new Error(`status must be one of ${TASK_STATUSES.join(', ')}`), { status: 400 });
       if (body.status === 'done') throw Object.assign(new Error('Use goally_complete_task with evidence to mark a task done.'), { status: 400 });
-      m.append('task.update', { taskId: task.id, status: body.status, note: body.note ? redact(body.note, 2000) : undefined });
-      return { ok: true, task: { id: task.id, status: task.status } };
+      const edit = {};
+      for (const k of ['title', 'description', 'acceptance', 'verify', 'lane']) if (typeof body[k] === 'string') edit[k] = redact(body[k], k === 'description' ? 4000 : 600);
+      if (Array.isArray(body.depends)) edit.depends = body.depends.map((d) => String(d).toUpperCase());
+      m.append('task.update', { taskId: task.id, status: body.status, note: body.note ? redact(body.note, 2000) : undefined, by: body.agent ? agentName(body.agent) : undefined, ...edit });
+      return { ok: true, task: { id: task.id, status: task.status, lane: task.lane } };
+    },
+    claimTask(body) {
+      const m = missionFrom(body);
+      const task = findTask(m, body.taskId);
+      const by = agentName(body.agent);
+      const s = m.state;
+      if (s.status === 'paused') throw Object.assign(new Error('Mission is paused on the board. Wait for the operator to resume it.'), { status: 409 });
+      if (task.status === 'done') throw Object.assign(new Error(`${task.id} is already done.`), { status: 409 });
+      if (task.status === 'running' && task.owner && task.owner !== by && !body.takeover) {
+        throw Object.assign(new Error(`${task.id} is already claimed by ${task.owner}. Pass takeover: true only if that agent is gone.`), { status: 409 });
+      }
+      const waiting = task.depends.filter((d) => s.tasks.find((t) => t.id === d)?.status !== 'done');
+      if (waiting.length) throw Object.assign(new Error(`${task.id} waits for ${waiting.join(', ')}. Pick another task or ask the manager.`), { status: 409 });
+      const running = s.tasks.filter((t) => t.status === 'running' && t.id !== task.id).length;
+      if (task.status !== 'running' && running >= config.maxParallelAgents) {
+        throw Object.assign(new Error(`${running} tasks are in progress (limit ${config.maxParallelAgents}). Wait for one to finish.`), { status: 429 });
+      }
+      m.append('task.claim', { taskId: task.id, by });
+      const inputs = task.depends.map((d) => s.tasks.find((t) => t.id === d)).filter(Boolean).map((t) => ({
+        id: t.id, title: t.title,
+        result: t.notes.filter((n) => n.kind === 'result').at(-1)?.text || '',
+        evidence: t.evidence.map((e) => `${e.kind}: ${e.ref}`),
+      }));
+      return { task: { id: task.id, title: task.title, description: task.description, acceptance: task.acceptance, verify: task.verify, lane: task.lane }, goal: s.goal, missionTitle: s.title, inputs, history: task.notes.slice(-8) };
+    },
+    report(body) {
+      const m = missionFrom(body);
+      const task = findTask(m, body.taskId);
+      const text = redact(String(body.text || '').trim(), 4000);
+      const attachments = attachmentsOf(body.attachments);
+      if (!text && !attachments.length) throw Object.assign(new Error('text or attachments required'), { status: 400 });
+      const kind = ['progress', 'decision', 'blocker', 'result'].includes(body.kind) ? body.kind : 'progress';
+      m.append('task.report', { taskId: task.id, by: agentName(body.agent), kind, text, attachments });
+      return { ok: true, status: task.status };
+    },
+    recordCheck(body) {
+      const m = missionFrom(body);
+      const task = body.taskId ? findTask(m, body.taskId) : null;
+      const cls = classifyCommand(body.command);
+      m.append('task.check', {
+        taskId: task?.id || null, by: body.agent ? agentName(body.agent) : null,
+        command: redact(String(body.command || ''), 400), ok: Boolean(body.ok), exitCode: Number.isFinite(body.exitCode) ? body.exitCode : null,
+        durationMs: Number(body.durationMs) || 0, output: redact(String(body.output || ''), 4000),
+        fingerprint: body.fingerprint || null, files: (Array.isArray(body.files) ? body.files : []).slice(0, 200).map(String), cwd: body.cwd || null,
+        targeted: cls.kind === 'test' ? cls.targeted : true, full: Boolean(cls.full),
+      });
+      return { ok: true, status: task?.status ?? null };
+    },
+    inbox(body) {
+      const m = registry.resolve({ missionId: body.missionId, workspace: body.workspace });
+      if (!m || !['active', 'paused'].includes(m.state.status)) return { text: '' };
+      return { text: delivery.nextForCall(m, { taskId: body.taskId ? String(body.taskId).toUpperCase() : null }) };
     },
     completeTask(body) {
       const m = missionFrom(body);
-      const task = m.state.tasks.find((t) => t.id === String(body.taskId).toUpperCase());
-      if (!task) throw Object.assign(new Error(`Unknown task ${body.taskId}`), { status: 404 });
+      const task = findTask(m, body.taskId);
       const evidence = (Array.isArray(body.evidence) ? body.evidence : [])
         .slice(0, 20)
         .map((e) => ({ kind: String(e.kind || 'note'), ref: redact(String(e.ref || ''), 400), note: e.note ? redact(String(e.note), 600) : undefined }));
       const r = evaluateProof(m.state, task, evidence);
-      m.append('task.complete', { taskId: task.id, evidence, ...r });
+      m.append('task.complete', { taskId: task.id, evidence, by: body.agent ? agentName(body.agent) : undefined, summary: body.summary ? redact(String(body.summary), 3000) : undefined, ...r });
+      if (r.accepted) supervisor.trigger(m, 'task-done');
       const v = verdict(m.state);
       return { accepted: r.accepted, reason: r.reason, mission: { go: v.go, done: v.done, total: v.total } };
     },
     status(body) {
       const m = missionFrom(body);
-      return { text: statusText(m, { url: urlFor(m) }), verdict: verdict(m.state), missionId: m.id, url: urlFor(m) };
+      return { text: statusText(m, { url: urlFor(m) }), verdict: verdict(m.state), missionId: m.id, url: urlFor(m), tasks: m.state.tasks.map((t) => ({ id: t.id, status: t.status, verify: t.verify, owner: t.owner })) };
     },
     resume(body) {
       const m = missionFrom(body);
@@ -192,7 +274,7 @@ export async function startDaemon() {
     },
     demoFinding(body) {
       const m = missionFrom(body);
-      if (!m.state.workspace.includes('/.goally/demo-workspace')) throw Object.assign(new Error('demo only'), { status: 403 });
+      if (!m.state.workspace.startsWith(path.join(paths.home, 'demo-workspace'))) throw Object.assign(new Error('demo only'), { status: 403 });
       supervisor.apply(m, { findings: [body.finding], resolved: [] }, config);
       m.append('supervisor.run', { ok: true, ms: 18400, findings: 1, summary: 'CT-3 drifted into unrequested hardening', coveredSeq: m.state.lastSeq });
       return { ok: true };
@@ -293,7 +375,7 @@ export async function startDaemon() {
         if (req.method === 'GET' && sub === '/shot') {
           // Serves only image files the agent attached as screenshot evidence for this mission.
           const ref = url.searchParams.get('ref') || '';
-          const known = m.state.tasks.some((t) => t.evidence.some((e) => e.kind === 'screenshot' && e.ref === ref));
+          const known = m.state.tasks.some((t) => t.evidence.some((e) => e.kind === 'screenshot' && e.ref === ref) || t.notes.some((n) => n.attachments?.some((a) => a.kind === 'screenshot' && a.ref === ref)));
           const mime = SHOT_MIME[path.extname(ref).toLowerCase()];
           const file = ref.startsWith('~/') ? path.join(os.homedir(), ref.slice(2)) : path.resolve(m.state.workspace || '/', ref);
           let size = 0;
@@ -367,7 +449,7 @@ export async function startDaemon() {
       try {
         remoteReadGuard(req, url);
       } catch {
-        return send(res, 401, 'Goally: open the private link or scan the QR code from Settings → Remote access on your Mac.');
+        return send(res, 401, 'Goally: open the private link or scan the QR code under Phone access on your Mac.');
       }
     }
     return serveStatic(res, p, isRemote(req) && url.searchParams.get('key') ? url.searchParams.get('key') : null);

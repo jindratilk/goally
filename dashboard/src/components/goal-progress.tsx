@@ -3,10 +3,11 @@ import type { Mission } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-/** Remaining time from the pace so far: average time per launched task × tasks left. */
+/** The Goal Director's latest estimate counted down since it was made; before its first check, the pace so far. */
 export function etaMs(m: Mission, now: number) {
   const { done, total } = m.verdict
   if (total === 0 || done >= total) return 0
+  if (m.eta) return Math.max(60000, m.eta.minutes * 60000 - (now - m.eta.at))
   if (done === 0) return null
   return (((m.endedAt ?? now) - m.startedAt) / done) * (total - done)
 }
@@ -52,10 +53,15 @@ export function GoalProgress({ mission, now }: { mission: Mission; now: number }
             {complete ? 'Goal reached' : `${remaining}% remaining`} · {done} of {total} tasks launched
           </TooltipContent>
         </Tooltip>
-        <span className={cn('hidden items-center gap-1.5 text-sm tabnum sm:flex', complete ? 'text-success' : 'text-muted-foreground')}>
-          <Clock className="size-3.5" />
-          {humanEta(etaMs(mission, now))}
-        </span>
+        <Tooltip>
+          <TooltipTrigger render={<span tabIndex={0} className={cn('hidden cursor-default items-center gap-1.5 rounded-md text-sm tabnum outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex', complete ? 'text-success' : 'text-muted-foreground')} />}>
+            <Clock className="size-3.5" />
+            {humanEta(etaMs(mission, now))}
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-72">
+            {complete ? 'Every task is proven' : mission.eta ? `Goal Director estimate · ${mission.eta.reason || 'from pace and remaining work'}` : 'From the pace so far, until the Goal Director weighs in'}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </TooltipProvider>
   )

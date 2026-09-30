@@ -46,7 +46,7 @@ export function parseExitCode(toolOutput) {
   return null;
 }
 
-const TAG_RE = /\[(CT-\d+)\]/i;
+const TAG_RE = /\b(CT-\d+)\b/i;
 
 export function taskTag(text) {
   const m = TAG_RE.exec(String(text || ''));

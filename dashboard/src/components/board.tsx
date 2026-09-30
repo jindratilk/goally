@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { CheckCircle2, ImageOff, Link2, Lock, OctagonAlert, Search } from 'lucide-react'
+import { ArrowRight, CheckCircle2, FileText, FlaskConical, ImageOff, Lightbulb, Link2, Lock, MessageSquare, OctagonAlert, Search, UserRound, type LucideIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { Agent, Mission, Task, TaskStatus } from '@/lib/api'
+import type { Agent, Attachment, Mission, Task, TaskNote, TaskStatus } from '@/lib/api'
 import { ago, dur, shortPath } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -46,10 +46,18 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {live ? (
           <span className="truncate">
-            {dur(now - live.startedAt)} · {live.liveToolCalls} tools{live.lastTool ? ` · ${live.lastTool}` : ''}
+            {task.owner ? `${task.owner} · ` : ''}
+            {dur(now - live.startedAt)} · {live.liveToolCalls} tools
           </span>
         ) : task.status === 'blocked' || task.status === 'failed' ? (
-          <span className="truncate text-danger">{task.status === 'failed' ? 'Failed' : 'Blocked'}{task.notes.at(-1) ? ` · ${task.notes.at(-1)!.text}` : ''}</span>
+          <span className="truncate text-danger">{task.status === 'failed' ? 'Failed' : 'Blocked'}{blockerText(task) ? ` · ${blockerText(task)}` : ''}</span>
+        ) : (task.status === 'running' || task.status === 'review') && task.owner ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <UserRound className="size-3 shrink-0" />
+            <span className="truncate">{task.owner}</span>
+            {task.lastCheck && <span className={cn('shrink-0', task.lastCheck.ok ? 'text-success' : 'text-danger')}>· check {task.lastCheck.ok ? 'passed' : 'failed'}</span>}
+            <span className="ml-auto shrink-0 text-subtle">{ago(task.updatedAt || task.startedAt, now)}</span>
+          </span>
         ) : task.status === 'review' && task.proof && !task.proof.ok ? (
           <span className="truncate text-warning">Proof rejected</span>
         ) : task.status === 'todo' && waiting.length ? (
@@ -64,11 +72,15 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
   )
 }
 
+function blockerText(task: Task) {
+  return task.notes.filter((n) => n.text && (!n.kind || n.kind === 'blocker')).at(-1)?.text ?? ''
+}
+
 export function Board({ mission, now, onOpenTask }: { mission: Mission; now: number; onOpenTask: (id: string) => void }) {
   const [q, setQ] = useState('')
   const [lane, setLane] = useState('all')
   const [tab, setTab] = useState('progress')
-  const lanes = useMemo(() => [...new Set(mission.tasks.map((t) => t.lane).filter(Boolean))], [mission.tasks])
+  const lanes = useMemo(() => [...new Set([...(mission.lanes ?? []), ...mission.tasks.map((t) => t.lane)].filter((l) => l && mission.tasks.some((t) => t.lane === l)))], [mission.lanes, mission.tasks])
   const tasks = mission.tasks.filter((t) => (lane === 'all' || t.lane === lane) && (!q || `${t.id} ${t.title} ${t.verify}`.toLowerCase().includes(q.toLowerCase())))
   const byCol = (c: (typeof COLUMNS)[number]) => tasks.filter((t) => c.statuses.includes(t.status))
 
@@ -122,7 +134,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 const UI_FILE = /\.(tsx|jsx|vue|svelte|css|scss|html|swift|xib|storyboard)$/i
 
-function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
+function Shot({ missionId, ref_, compact }: { missionId: string; ref_: string; compact?: boolean }) {
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
   const src = /^https?:\/\//.test(ref_) ? ref_ : `/api/missions/${missionId}/shot?ref=${encodeURIComponent(ref_)}`
@@ -136,8 +148,8 @@ function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
     )
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="block w-full cursor-zoom-in overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 transition-shadow hover:shadow-md">
-        <img src={src} alt={ref_} onError={() => setFailed(true)} className="max-h-[60vh] w-full object-contain" />
+      <button type="button" onClick={() => setOpen(true)} className={cn('block cursor-zoom-in overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10 transition-shadow hover:shadow-md', compact ? 'w-fit max-w-full' : 'w-full')}>
+        <img src={src} alt={ref_} onError={() => setFailed(true)} className={cn('object-contain', compact ? 'max-h-40 w-auto' : 'max-h-[60vh] w-full')} />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] w-auto max-w-[94vw] gap-0 overflow-hidden bg-card p-0 shadow-[0_32px_90px_-12px_rgba(0,0,0,0.6),0_8px_24px_rgba(0,0,0,0.25)] sm:max-w-[94vw]">
@@ -149,13 +161,85 @@ function Shot({ missionId, ref_ }: { missionId: string; ref_: string }) {
   )
 }
 
+const NOTE_META: Record<string, { icon: LucideIcon; label: string }> = {
+  claim: { icon: UserRound, label: 'Claimed' },
+  progress: { icon: MessageSquare, label: 'Progress' },
+  decision: { icon: Lightbulb, label: 'Decision' },
+  blocker: { icon: OctagonAlert, label: 'Blocker' },
+  result: { icon: CheckCircle2, label: 'Result' },
+  check: { icon: FlaskConical, label: 'Check' },
+  status: { icon: ArrowRight, label: 'Status' },
+}
+
+function AttachmentChip({ a, missionId }: { a: Attachment; missionId: string }) {
+  if (a.kind === 'screenshot') return <Shot missionId={missionId} ref_={a.ref} compact />
+  const Icon = a.kind === 'url' ? Link2 : FileText
+  const body = (
+    <>
+      <Icon className="size-3 shrink-0" />
+      <span className="truncate">{a.label || a.ref}</span>
+    </>
+  )
+  const cls = 'inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground'
+  return a.kind === 'url' && /^https?:\/\//.test(a.ref) ? (
+    <a href={a.ref} target="_blank" rel="noreferrer" className={cn(cls, 'hover:text-foreground')}>
+      {body}
+    </a>
+  ) : (
+    <span className={cls} title={a.ref}>
+      {body}
+    </span>
+  )
+}
+
+function History({ notes, missionId, now }: { notes: TaskNote[]; missionId: string; now: number }) {
+  return (
+    <ol className="relative flex flex-col gap-4 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
+      {notes.map((n, i) => {
+        const kind = n.kind ?? 'progress'
+        const meta = NOTE_META[kind] ?? NOTE_META.progress
+        const Icon = meta.icon
+        const tone = kind === 'blocker' || (kind === 'check' && n.ok === false) ? 'text-danger' : kind === 'result' || (kind === 'check' && n.ok) ? 'text-success' : 'text-muted-foreground'
+        return (
+          <li key={`${n.t}-${i}`} className="relative flex gap-3">
+            <span className={cn('relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-foreground/10', tone)}>
+              <Icon className="size-3.5" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className={cn('font-medium', tone === 'text-muted-foreground' ? 'text-foreground' : tone)}>{kind === 'status' && n.status ? `Status → ${n.status}` : meta.label}</span>
+                {n.by && <span>· {n.by}</span>}
+                <span className="ml-auto shrink-0 tabnum text-subtle">{ago(n.t, now)}</span>
+              </div>
+              {n.text && kind !== 'claim' && <p className={cn('text-sm [overflow-wrap:anywhere]', kind === 'check' && 'font-mono text-xs')}>{n.text}</p>}
+              {kind === 'check' && n.output && (
+                <details className="group/out">
+                  <summary className="cursor-pointer text-xs text-muted-foreground select-none hover:text-foreground">Output{n.durationMs ? ` · ${dur(n.durationMs)}` : ''}</summary>
+                  <pre className="mt-1.5 max-h-64 overflow-auto rounded-md bg-muted p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-muted-foreground">{n.output}</pre>
+                </details>
+              )}
+              {!!n.attachments?.length && (
+                <div className="flex flex-col gap-2">
+                  {n.attachments.map((a, j) => (
+                    <AttachmentChip key={j} a={a} missionId={missionId} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | null; mission: Mission; now: number; onClose: () => void }) {
   const task = mission.tasks.find((t) => t.id === taskId) ?? null
   const agents = task ? agentsFor(task, mission.agents) : []
   const findings = task ? mission.findings.filter((f) => f.taskId === task.id) : []
-  const shots = task ? task.evidence.filter((e) => e.kind === 'screenshot') : []
+  const shots = task ? [...new Set([...task.evidence.filter((e) => e.kind === 'screenshot').map((e) => e.ref), ...task.notes.flatMap((n) => (n.attachments ?? []).filter((a) => a.kind === 'screenshot').map((a) => a.ref))])] : []
+  const history = task ? [...task.notes].reverse() : []
   const isUi = !!task && (shots.length > 0 || task.lane.toLowerCase() === 'ui' || agents.some((a) => a.modifiedFiles.some((f) => UI_FILE.test(f))))
-  const events = task ? mission.timeline.filter((e) => e.taskId === task.id || agents.some((a) => a.id === e.agent)).slice(-10).reverse() : []
   return (
     <Sheet open={!!task} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:w-2/3 data-[side=right]:sm:max-w-none">
@@ -175,6 +259,7 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                 <Row label="Verify">
                   <code className="font-mono text-xs">{task.verify || '—'}</code>
                 </Row>
+                <Row label="Owner">{task.owner || <span className="text-muted-foreground">Unclaimed</span>}</Row>
                 <Row label="Depends on">{task.depends.length ? task.depends.join(', ') : '—'}</Row>
                 <Row label="Proof">
                   {task.proof ? <span className={task.proof.ok ? 'text-success' : 'text-warning'}>{task.proof.reason}</span> : <span className="text-muted-foreground">Not submitted</span>}
@@ -198,8 +283,8 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                   <h3 className="mb-2 text-sm font-medium">Screenshot</h3>
                   {shots.length > 0 ? (
                     <div className="flex flex-col gap-3">
-                      {shots.map((e, i) => (
-                        <Shot key={i} missionId={mission.id} ref_={e.ref} />
+                      {shots.map((ref) => (
+                        <Shot key={ref} missionId={mission.id} ref_={ref} />
                       ))}
                     </div>
                   ) : (
@@ -212,8 +297,13 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
               )}
 
               <section>
+                <h3 className="mb-3 text-sm font-medium">History</h3>
+                {history.length === 0 ? <p className="text-sm text-muted-foreground">Nothing yet. The agent that claims this task reports here.</p> : <History notes={history} missionId={mission.id} now={now} />}
+              </section>
+
+              {agents.length > 0 && (
+              <section>
                 <h3 className="mb-2 text-sm font-medium">Agent runs</h3>
-                {agents.length === 0 && <p className="text-sm text-muted-foreground">Not launched yet.</p>}
                 <div className="flex flex-col gap-2">
                   {agents.map((a) => (
                     <div key={a.id} className="rounded-lg p-3 ring-1 ring-foreground/10">
@@ -239,6 +329,7 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                   ))}
                 </div>
               </section>
+              )}
 
               {findings.length > 0 && (
                 <section>
@@ -254,30 +345,6 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                 </section>
               )}
 
-              {task.notes.length > 0 && (
-                <section>
-                  <h3 className="mb-2 text-sm font-medium">Notes</h3>
-                  <ul className="space-y-1.5">
-                    {task.notes.map((n, i) => (
-                      <li key={i} className="text-sm text-muted-foreground">
-                        {n.text} <span className="text-xs text-subtle">{ago(n.t, now)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              <section>
-                <h3 className="mb-2 text-sm font-medium">History</h3>
-                <ul className="space-y-1">
-                  {events.map((e) => (
-                    <li key={e.seq} className="flex gap-3 text-xs">
-                      <span className="w-14 shrink-0 text-muted-foreground tabnum">{ago(e.t, now)}</span>
-                      <span className="min-w-0">{e.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
             </div>
           </div>
         )}

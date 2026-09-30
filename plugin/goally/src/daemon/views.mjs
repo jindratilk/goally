@@ -5,9 +5,9 @@ export function verdict(state) {
     let reason = '';
     let go = false;
     if (t.status === 'done' && t.proof?.ok) go = true;
-    else if (t.status === 'blocked') reason = t.notes.at(-1)?.text || 'Blocked';
+    else if (t.status === 'blocked') reason = t.notes.filter((n) => n.text && (!n.kind || n.kind === 'blocker')).at(-1)?.text || 'Blocked';
     else if (t.status === 'failed') reason = 'Agent failed';
-    else if (t.status === 'running') reason = 'In progress';
+    else if (t.status === 'running') reason = t.owner ? `In progress · ${t.owner}` : 'In progress';
     else if (t.status === 'review') reason = t.proof && !t.proof.ok ? t.proof.reason : 'Finished, awaiting proof';
     else reason = 'Not started';
     return { taskId: t.id, title: t.title, go, status: t.status, reason };
@@ -140,7 +140,7 @@ export function statusText(mission, { url } = {}) {
   lines.push('Tasks:');
   for (const t of s.tasks) {
     const st = v.stations.find((x) => x.taskId === t.id);
-    lines.push(`- [${t.id}] ${t.status.toUpperCase()}${st.go ? ' GO' : ''} · ${t.title}${st.go ? '' : ` · ${st.reason}`}`);
+    lines.push(`- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.status.toUpperCase()}${st.go ? ' GO' : ''} · ${t.title}${t.owner ? ` · ${t.owner}` : ''}${st.go ? '' : ` · ${st.reason}`}`);
   }
   if (v.blockers.length) {
     lines.push('');
@@ -177,8 +177,9 @@ export function continuationBrief(mission, { url } = {}) {
     out.push(`- [${t.id}] ${t.status.toUpperCase()} · ${t.title}`);
     if (t.acceptance) out.push(`  - acceptance: ${t.acceptance}`);
     if (t.verify) out.push(`  - verify: ${t.verify}`);
-    const last = t.notes.at(-1);
-    if (last) out.push(`  - last note: ${last.text}`);
+    if (t.owner) out.push(`  - owner: ${t.owner}`);
+    const last = t.notes.filter((n) => n.text && n.kind !== 'claim').at(-1);
+    if (last) out.push(`  - last ${last.kind || 'note'}: ${last.text}`);
     const agents = t.agentIds.map((id) => s.agents[id]).filter(Boolean);
     const lastAgent = agents.at(-1);
     if (lastAgent?.summary) out.push(`  - last agent summary: ${lastAgent.summary.slice(0, 400)}`);
@@ -202,6 +203,6 @@ export function continuationBrief(mission, { url } = {}) {
     for (const b of v.blockers) out.push(`- ${b}`);
   }
   out.push('');
-  out.push('Continue with the remaining tasks only. Tag every subagent task with its [CT-n] id and finish each task with goally_complete_task plus evidence.');
+  out.push('Continue with the remaining tasks only. Each one is claimed with goally_claim_task, proven with goally_check or an artifact, and closed with goally_complete_task.');
   return out.join('\n');
 }

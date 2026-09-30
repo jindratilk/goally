@@ -69,10 +69,10 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
         <Field label="Enabled">
           <Switch checked={cfg.supervisor.enabled} disabled={ro} onCheckedChange={(v) => save({ supervisor: { enabled: v } })} />
         </Field>
-        <Field label="Check interval">
+        <Field label="Deep research every" hint="Grok Build wakes up, reads the board and the code, and writes to the main chat only when something is off.">
           <Range value={cfg.supervisor.intervalMin} min={2} max={60} unit="min" disabled={ro} onCommit={(v) => save({ supervisor: { intervalMin: v } })} />
         </Field>
-        <Field label="Also check when an agent finishes">
+        <Field label="Also check when a task finishes">
           <Switch checked={cfg.supervisor.triggerOnAgentStop} disabled={ro} onCheckedChange={(v) => save({ supervisor: { triggerOnAgentStop: v } })} />
         </Field>
         <Field label="Intervention" hint="On: Goal Director writes into the main chat. Off: findings only appear on the board.">

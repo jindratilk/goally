@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -47,30 +47,60 @@ function ago(ms) {
   return m < 90 ? `${m}m` : `${Math.round(m / 60)}h`;
 }
 
-export function buildPrompt(mission) {
+function gitContext(dir, since) {
+  const git = (...args) => {
+    try {
+      return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', timeout: 5000, maxBuffer: 4e6, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return '';
+    }
+  };
+  if (!git('rev-parse', '--is-inside-work-tree')) return null;
+  const cap = (t, n) => t.split('\n').filter(Boolean).slice(0, n).join('\n');
+  return {
+    log: cap(git('log', '--oneline', `--since=@${Math.floor(since / 1000)}`), 30),
+    status: cap(git('status', '--short'), 60),
+    diff: cap(git('diff', '--stat', 'HEAD').split('\n').slice(-40).join('\n'), 40),
+  };
+}
+
+export function buildPrompt(mission, { reason = 'interval', git = null } = {}) {
   const s = mission.state;
   const now = Date.now();
   const v = verdict(s);
   const st = stats(s, now);
+  const lastRun = s.supervisor.lastRunAt;
   const L = [];
   L.push(directorBrief());
   L.push('');
   L.push(`# Mission ${s.id}: ${s.title}`);
-  L.push(`Status ${s.status} · running ${ago(now - s.startedAt)} · ${v.done}/${v.total} proven · verdict ${v.go ? 'GO' : 'NO-GO'}`);
+  L.push(`Harness ${s.harness || 'unknown'} · status ${s.status} · running ${ago(now - s.startedAt)} · ${v.done}/${v.total} proven · verdict ${v.go ? 'GO' : 'NO-GO'}`);
+  if (reason === 'kickoff') L.push('This is the kickoff check: the plan was just registered. Judge the plan itself (does the task split cover the goal without extra scope, are the verify commands targeted) and give a first ETA.');
+  else if (lastRun) {
+    const doneSince = s.tasks.filter((t) => t.doneAt && t.doneAt > lastRun).map((t) => t.id);
+    const reportsSince = s.tasks.reduce((n, t) => n + t.notes.filter((x) => x.t > lastRun).length, 0);
+    L.push(`Since your last check ${ago(now - lastRun)} ago: ${doneSince.length ? `${doneSince.join(', ')} proven` : 'no task proven'}, ${reportsSince} task updates.`);
+  }
   L.push('');
   L.push('## Goal (from the operator)');
   L.push(redact(s.goal, 4000));
   L.push('');
   L.push('## Tasks');
   for (const t of s.tasks) {
-    L.push(`- ${t.id} [${t.status}] ${t.title}`);
+    L.push(`- ${t.id} [${t.status}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.owner ? ` · owner ${t.owner}` : ''}`);
     if (t.acceptance) L.push(`  acceptance: ${redact(t.acceptance, 400)}`);
     if (t.verify) L.push(`  verify: ${redact(t.verify, 300)}`);
     if (t.startedAt) L.push(`  started ${ago(now - t.startedAt)} ago${t.doneAt ? `, done after ${ago(t.doneAt - t.startedAt)}` : ''}`);
     if (t.proof) L.push(`  proof: ${t.proof.ok ? 'accepted' : `rejected (${t.proof.reason})`}`);
-    const n = t.notes.at(-1);
-    if (n) L.push(`  last note: ${redact(n.text, 300)}`);
+    for (const n of t.notes.filter((x) => x.text && x.kind !== 'claim').slice(-3)) L.push(`  ${n.kind || 'note'} ${ago(now - n.t)} ago${n.by ? ` by ${n.by}` : ''}: ${redact(n.text, 300)}${n.attachments?.length ? ` [${n.attachments.map((a) => `${a.kind}: ${a.ref}`).join(', ')}]` : ''}`);
+    if (t.lastCheck) L.push(`  last check ${t.lastCheck.ok ? 'PASS' : 'FAIL'} ${ago(now - t.lastCheck.t)} ago (${ago(t.lastCheck.durationMs || 0)}): ${redact(t.lastCheck.command, 200)}`);
   }
+  const hooks = s.counters.toolCalls > 0 || Object.keys(s.agents).length > 0 || s.counters.edits > 0;
+  if (!hooks) {
+    L.push('');
+    L.push(`## Activity\nThis harness (${s.harness || 'unknown'}) sends no hooks, so tool calls, edits and agent runs are not recorded. Judge from the task reports and checks above, the git state below, and the files themselves.`);
+  }
+  if (hooks) {
   L.push('');
   L.push('## Agents');
   for (const a of Object.values(s.agents).slice(-20)) {
@@ -93,6 +123,14 @@ export function buildPrompt(mission) {
   for (const [p, f] of Object.entries(s.files).sort((a, b) => b[1].count - a[1].count).slice(0, 15)) {
     L.push(`- ${p} · ${f.count} edits by ${f.agents.map((x) => (x === 'main' ? 'MANAGER' : s.agents[x]?.taskId || 'sub')).join(', ')}`);
   }
+  }
+  if (git) {
+    L.push('');
+    L.push('## Git since the mission started');
+    L.push(git.log ? `Commits:\n${git.log}` : 'Commits: none');
+    if (git.status) L.push(`Working tree:\n${git.status}`);
+    if (git.diff) L.push(`Diff vs HEAD:\n${git.diff}`);
+  }
   const open = s.findings.filter((f) => f.status === 'open');
   L.push('');
   L.push('## Your open findings from earlier checks');
@@ -104,8 +142,8 @@ export function buildPrompt(mission) {
   L.push('');
   L.push('# Output');
   L.push('Reply with ONLY one JSON object, no prose, no code fence:');
-  L.push('{"summary":"one sentence on mission health","findings":[{"kind":"overengineering|stuck|full-build|off-scope|no-proof|integration|other","severity":"low|medium|high","taskId":"CT-1 or null","title":"short headline","detail":"evidence you saw","action":"one imperative instruction for the manager"}],"resolved":["F-1"]}');
-  L.push('At most 3 new findings; an open finding only comes back if it got worse. "resolved" lists open finding ids that are no longer true.');
+  L.push('{"summary":"one sentence on mission health","eta":{"minutes":25,"reason":"why, from pace and what is left"},"findings":[{"kind":"overengineering|stuck|full-build|off-scope|no-proof|integration|other","severity":"low|medium|high","taskId":"CT-1 or null","title":"short headline","detail":"evidence you saw","action":"one imperative instruction for the manager"}],"resolved":["F-1"]}');
+  L.push('eta.minutes is your estimate of wall-clock minutes until every task is proven. At most 3 new findings; an open finding only comes back if it got worse. "resolved" lists open finding ids that are no longer true.');
   return L.join('\n');
 }
 
@@ -127,7 +165,9 @@ export function parseVerdict(text) {
         action: String(f.action || '').slice(0, 400),
       }))
       .filter((f) => f.title);
-    return { summary: String(obj.summary || '').slice(0, 300), findings, resolved: Array.isArray(obj.resolved) ? obj.resolved.map(String) : [] };
+    const minutes = Math.round(Number(obj.eta?.minutes));
+    const eta = Number.isFinite(minutes) && minutes >= 0 && minutes < 10000 ? { minutes, reason: String(obj.eta?.reason || '').slice(0, 300) } : null;
+    return { summary: String(obj.summary || '').slice(0, 300), eta, findings, resolved: Array.isArray(obj.resolved) ? obj.resolved.map(String) : [] };
   } catch {
     return null;
   }
@@ -168,6 +208,18 @@ export class Supervisor {
     }
   }
 
+  kickoff(mission) {
+    const cfg = this.getConfig();
+    if (!cfg.supervisor.enabled) return;
+    const t = setTimeout(() => {
+      this.timers.delete(mission.id);
+      this.run(mission, { force: true, reason: 'kickoff' }).catch((e) => this.log?.(`supervisor: ${e.message}`));
+    }, 45000);
+    t.unref?.();
+    clearTimeout(this.timers.get(mission.id));
+    this.timers.set(mission.id, t);
+  }
+
   trigger(mission, reason) {
     const cfg = this.getConfig();
     if (!cfg.supervisor.enabled || !cfg.supervisor.triggerOnAgentStop) return;
@@ -199,7 +251,7 @@ export class Supervisor {
       if (!bin) throw new Error('grok CLI not found. Install Grok Build: curl -fsSL https://x.ai/cli/install.sh | bash');
       const dir = path.join(missionDir(mission.id), 'supervisor');
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-      const prompt = buildPrompt(mission);
+      const prompt = buildPrompt(mission, { reason, git: gitContext(s.workspace, s.startedAt) });
       const file = path.join(dir, `check-${String(s.supervisor.runs + 1).padStart(3, '0')}.md`);
       fs.writeFileSync(file, prompt, { mode: 0o600 });
       const args = [
@@ -232,7 +284,7 @@ export class Supervisor {
       if (!parsed) throw new Error('Goal Director reply was not valid JSON');
       this.apply(mission, parsed, cfg);
       mission.append('supervisor.run', {
-        ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary,
+        ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary, eta: parsed.eta, reason,
         sessionId: out.sessionId || s.supervisor.sessionId, costUsd: Number(out.total_cost_usd || 0), coveredSeq,
       });
       this.delivery.flush(mission).catch(() => {});

@@ -296,7 +296,7 @@ export default function App() {
         <div className="flex max-w-3xl flex-col items-center gap-7 text-center">
           <div className="flex flex-col items-center gap-4 sm:gap-5">
             <h1 className="text-[2.3rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-6xl lg:text-[4.25rem]">
-              Give Cursor a big goal.
+              Give an Agent a big goal.
               <br />
               Watch it get done.
             </h1>

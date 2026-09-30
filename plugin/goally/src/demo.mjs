@@ -82,8 +82,15 @@ export async function runDemo({ speed = 1 } = {}) {
   const stopSub = (id, tag, task, status, files, summary, ms) =>
     hook('subagentStop', { conversation_id: MAIN, subagent_id: id, subagent_type: 'generalPurpose', status, task: `[${tag}] ${task}`, description: task, summary, duration_ms: ms, message_count: 14, tool_call_count: 22, modified_files: files.map((f) => path.join(ws, f)), loop_count: 0 });
 
+  const rpc = (method, body) => call('POST', `/api/rpc/${method}`, { missionId: id, ...body });
+  const claim = (taskId, agent) => rpc('claimTask', { taskId, agent, takeover: true });
+  const report = (taskId, agent, kind, text, attachments) => rpc('report', { taskId, agent, kind, text, attachments });
+  const check = (taskId, agent, command, ok, durationMs, output = '') => rpc('recordCheck', { taskId, agent, command, ok, exitCode: ok ? 0 : 1, durationMs, output });
+  let id;
   const r = await call('POST', '/api/rpc/startRun', {
     workspace: ws,
+    harness: 'cursor',
+    lanes: ['backend', 'ui', 'qa', 'release'],
     title: 'CSV export for reports',
     goal: 'Add CSV export to the reports page: backend endpoint, UI button, tests, and verify the real flow on the preview deploy. Do not touch billing. Done means a user can download a correct CSV on preview.',
     tasks: [
@@ -93,16 +100,19 @@ export async function runDemo({ speed = 1 } = {}) {
       { title: 'Verify real flow on preview', acceptance: 'Download works on the preview URL with a real account', verify: 'manual: preview URL + screenshot', depends: ['CT-1', 'CT-2', 'CT-3'], lane: 'release' },
     ],
   });
-  const id = r.missionId;
+  id = r.missionId;
   console.log(`Demo mission ${id} · ${LOCAL_URL}/#/m/${id}`);
 
   await main('postToolUse', { tool_name: 'MCP:goally_start_run', tool_input: {}, tool_output: '{}' });
   await sleep(2);
   await sub('sa-api', 'CT-1', 'Build GET /api/reports/export returning text/csv');
+  await claim('CT-1', 'api-agent');
   await sleep(1.2);
   await sub('sa-ui', 'CT-2', 'Add Export button to ReportsPage wired to the endpoint');
+  await claim('CT-2', 'ui-agent');
   await sleep(1.2);
   await sub('sa-csv', 'CT-3', 'Harden CSV escaping: commas, quotes, newlines, unicode');
+  await claim('CT-3', 'csv-agent');
   await sleep(2);
   await edit('sa-api', 'src/api/export.ts');
   await shell('sa-api', 'rg "reports" src/api');
@@ -113,10 +123,13 @@ export async function runDemo({ speed = 1 } = {}) {
   await shell('sa-csv', 'npm run build', 0, 94000);
   await sleep(1.5);
   await edit('sa-ui', 'src/api/export.ts');
+  await report('CT-1', 'api-agent', 'decision', 'Streaming the rows with the existing query builder; no new dependency.');
   await shell('sa-api', 'npx vitest run src/api/export.test.ts', 0, 3200);
+  await check('CT-1', 'api-agent', 'npx vitest run src/api/export.test.ts', true, 3200, '✓ src/api/export.test.ts (6 tests) 412ms\n\nTest Files  1 passed (1)\n     Tests  6 passed (6)');
   await sleep(2);
   await shell('sa-csv', 'npm run build', 0, 91000);
   await shell('sa-csv', 'npx vitest run', 1, 48000);
+  await check('CT-3', 'csv-agent', 'npx vitest run', false, 48000, 'FAIL src/lib/csv/streaming-encoder.test.ts\n  × flushes partial rows\n\nTest Files  1 failed | 23 passed (24)');
   await sleep(2);
   await stopSub('sa-api', 'CT-1', 'Build GET /api/reports/export returning text/csv', 'completed', ['src/api/export.ts', 'src/api/export.test.ts'], 'Endpoint streams CSV with header row; 6 tests pass.', 41000);
   await sleep(1.5);
@@ -136,24 +149,31 @@ export async function runDemo({ speed = 1 } = {}) {
   await sleep(1.5);
   await call('POST', '/api/rpc/ack', { missionId: id, messageId: 'M-1', decision: 'accepted', note: 'Reverting streaming encoder, re-running CT-3 with the targeted test only' });
   await shell(MAIN, 'npx vitest run src/api/export.test.ts', 0, 2900);
-  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-1', evidence: [{ kind: 'test', ref: 'npx vitest run src/api/export.test.ts' }] });
+  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-1', agent: 'api-agent', summary: 'GET /api/reports/export streams text/csv with a header row; honours the active filters.', evidence: [{ kind: 'test', ref: 'npx vitest run src/api/export.test.ts' }] });
   await sleep(1.5);
   await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-2', evidence: [{ kind: 'note', ref: 'looks good' }] });
   await sleep(1.5);
   await main('stop', { status: 'completed', loop_count: 0 });
   await sleep(2);
   await sub('sa-csv2', 'CT-3', 'Revert streaming encoder; prove RFC 4180 escaping with the targeted test');
+  await claim('CT-3', 'csv-agent-2');
+  await report('CT-3', 'csv-agent-2', 'decision', 'Reverted streaming-encoder.ts and bom.ts per Goal Director; escaping stays in csv.ts.');
   await sleep(1.5);
   await edit('sa-csv2', 'src/lib/csv.ts');
   await shell('sa-csv2', 'npx vitest run src/lib/csv.test.ts', 0, 1800);
   await sleep(1.5);
   await stopSub('sa-csv2', 'CT-3', 'Revert streaming encoder; prove RFC 4180 escaping with the targeted test', 'completed', ['src/lib/csv.ts'], 'Reverted extras; 9 escaping tests pass.', 26000);
-  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-3', evidence: [{ kind: 'test', ref: 'npx vitest run src/lib/csv.test.ts' }] });
+  await check('CT-3', 'csv-agent-2', 'npx vitest run src/lib/csv.test.ts', true, 1800, '✓ src/lib/csv.test.ts (9 tests) 88ms');
+  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-3', agent: 'csv-agent-2', summary: 'RFC 4180 escaping for commas, quotes, newlines and unicode; extras reverted.', evidence: [{ kind: 'test', ref: 'npx vitest run src/lib/csv.test.ts' }] });
   await call('POST', '/api/rpc/ack', { missionId: id, messageId: 'M-1', decision: 'resolved', note: 'CT-3 proven with targeted test' });
   await sleep(1.5);
+  await report('CT-2', 'ui-agent', 'progress', 'Button placed next to the filters; downloads with the active filters.', [{ kind: 'screenshot', ref: shot, label: 'Reports page with Export' }]);
   await shell(MAIN, 'npx playwright test e2e/export.spec.ts', 0, 21000);
-  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-2', evidence: [{ kind: 'test', ref: 'npx playwright test e2e/export.spec.ts' }, { kind: 'screenshot', ref: shot }] });
+  await check('CT-2', 'ui-agent', 'npx playwright test e2e/export.spec.ts', true, 21000, '  ✓ export.spec.ts:4:1 › downloads CSV with filters (3.1s)\n\n  1 passed (21.0s)');
+  await call('POST', '/api/rpc/completeTask', { missionId: id, taskId: 'CT-2', agent: 'ui-agent', evidence: [{ kind: 'test', ref: 'npx playwright test e2e/export.spec.ts' }, { kind: 'screenshot', ref: shot }] });
   await sleep(1);
   await sub('sa-prev', 'CT-4', 'Open preview deploy, download CSV as a real user, attach screenshot');
+  await claim('CT-4', 'release-agent');
+  await report('CT-4', 'release-agent', 'progress', 'Preview deploy is building; will download as the demo account next.');
   console.log('Demo running · CT-4 left in flight so the board stays live.');
 }
