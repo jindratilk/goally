@@ -271,7 +271,7 @@ export default function App() {
         </header>
 
         <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-5 px-3 py-5 sm:px-6 sm:py-6">
-          {(global || mission) && <PageHeader title={TITLES[view]} description={!global && mission ? <span className="line-clamp-1">{mission.goal}</span> : undefined} />}
+          {(global || mission) && <PageHeader title={TITLES[view]} />}
           <AnimatePresence mode="wait">
             <motion.div key={view + (global ? '' : missionId)} initial={{ y: 6 }} animate={{ y: 0 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
               {body}
