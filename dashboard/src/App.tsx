@@ -109,16 +109,33 @@ function Sidebar({ overview, mission, missionId, view, go }: { overview: Overvie
           <NavItem key={v.id} active={view === v.id} icon={v.icon} label={v.label} onClick={() => go({ view: v.id })} />
         ))}
       </nav>
-      <div className="flex flex-col gap-1.5 border-t px-2 pt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <Dot tone={overview.supervisor.available ? 'success' : 'danger'} /> Grok Build
-        </span>
-        <span className="flex items-center gap-2">
-          <Dot tone={overview.bridge.available ? 'success' : 'warning'} /> Desktop Bridge
-        </span>
-        <span className="flex items-center gap-2">
-          <Dot tone={overview.tunnel.status === 'up' ? 'success' : 'neutral'} /> Phone tunnel
-        </span>
+    </div>
+  )
+}
+
+function StatusMenu({ overview, offline, readOnly }: { overview: Overview; offline: boolean; readOnly: boolean }) {
+  const tunnel = overview.tunnel.status
+  const rows: { label: string; value: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }[] = [
+    { label: 'Grok Build', value: overview.supervisor.available ? 'Connected' : 'Not found', tone: overview.supervisor.available ? 'success' : 'danger' },
+    { label: 'Desktop Bridge', value: overview.bridge.available ? 'Connected' : 'Off', tone: overview.bridge.available ? 'success' : 'warning' },
+    { label: 'Phone tunnel', value: tunnel === 'up' ? 'On' : tunnel === 'starting' ? 'Starting' : tunnel === 'error' ? 'Error' : 'Off', tone: tunnel === 'up' ? 'success' : tunnel === 'error' ? 'danger' : 'neutral' },
+  ]
+  return (
+    <div className="group relative">
+      <button className={cn('flex h-8 items-center gap-1.5 rounded-md px-2 text-xs outline-none hover:bg-foreground/5 focus-visible:bg-foreground/5', offline ? 'text-danger' : 'text-muted-foreground')}>
+        <Dot tone={offline ? 'danger' : 'success'} pulse={!offline} />
+        {offline ? 'Offline' : readOnly ? 'Read-only' : 'Live'}
+      </button>
+      <div className="invisible absolute top-full right-0 z-50 pt-1 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div className="w-56 rounded-lg bg-popover p-1.5 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center gap-2 rounded-md px-2 py-1.5">
+              <Dot tone={r.tone} />
+              <span className="flex-1">{r.label}</span>
+              <span className="text-xs text-muted-foreground">{r.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -254,12 +271,7 @@ export default function App() {
             <span className="text-sm font-medium">{TITLES[view]}</span>
           )}
           <div className="ml-auto flex items-center gap-3">
-            {(offline || readOnly) && (
-              <span className={cn('hidden items-center gap-1.5 text-xs sm:flex', offline ? 'text-danger' : 'text-muted-foreground')}>
-                {offline && <Dot tone="danger" />}
-                {offline ? 'Offline' : 'Read-only'}
-              </span>
-            )}
+            <StatusMenu overview={overview} offline={offline} readOnly={readOnly} />
             {live && !readOnly && !global && (
               <Button size="sm" variant="outline" onClick={() => setStatus(mission.status === 'paused' ? 'active' : 'paused')}>
                 {mission.status === 'paused' ? <Play /> : <Pause />}
