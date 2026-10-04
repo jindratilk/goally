@@ -11,7 +11,7 @@ What the operator wants from a mission: the thing they asked for, proven, withou
 
 **Plan, then start.** Understand the goal and look at the repo just enough to cut the work into tasks and lanes, each task one outcome with a way to prove it. Then `goally_start_run`. [references/plan.md](references/plan.md) when you're unsure how to cut it.
 
-**Delegate with judgement.** Hand independent tasks to your harness's subagents in parallel; the start result says how to brief them. A finished subagent is not a finished task: you integrate. [references/delegate.md](references/delegate.md) covers briefing, the parallel limit, and doing small tasks yourself.
+**Delegate with judgement.** Hand independent tasks to your harness's subagents in parallel; the start result says how to brief them. A finished subagent is not a finished task: you integrate. [references/delegate.md](references/delegate.md) covers briefing, the parallel limit, and the pace rules.
 
 **Prove, don't claim.** A task closes only through `goally_complete_task`, which checks the evidence. If it says NO-GO, that reason is the next thing to fix. [references/proof.md](references/proof.md) explains what counts.
 
