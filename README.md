@@ -6,7 +6,7 @@ Mission control for big agent tasks in Cursor, Claude Code and Codex. You hand t
   <img src="docs/images/board.png" width="1000" alt="Goally in dark mode: a fictional CSV export mission with eight tasks across To-do, In progress, Testing and Launched; two agents are running and three tasks have proof.">
 </p>
 
-<p align="center"><sub>Product illustrations rendered offline with fictional demo missions and tasks.</sub></p>
+<p align="center"><sub>Rendered from the actual Goally UI with fictional demo missions and tasks.</sub></p>
 
 ## Install
 
@@ -40,9 +40,11 @@ Cursor and Claude Code: `/goally <big task>`. Codex: `$goally <big task>`. The b
 For a CLI outside `PATH`, set `GOALLY_GROK_BIN`, `GOALLY_CLAUDE_BIN` or `GOALLY_CODEX_BIN` to its executable path before starting the daemon. Discovery checks that the CLI starts, skips broken launchers, and also checks the bundled Codex CLI in standard macOS app locations. Each provider uses its existing CLI authentication; Goally does not need a separate API key.
 
 <p align="center">
-  <img src="docs/images/director.png" width="400" alt="Goal Director illustration: Codex flags a fictional download flow that still needs verification and sends an instruction to the main chat.">
-  &nbsp;&nbsp;
-  <img src="docs/images/settings.png" width="400" alt="Settings illustration: System, Light and Dark appearance choices, plus Grok Build, Claude and Codex providers with reasoning effort and model settings.">
+  <img src="docs/images/director.png" width="1000" alt="The actual Goal Director view with fictional data: a missing-proof finding, Codex review status, and delivery to the main chat.">
+</p>
+
+<p align="center">
+  <img src="docs/images/settings.png" width="1000" alt="The actual Settings view: System, Light and Dark appearance choices, plus Grok Build, Claude and Codex providers with reasoning effort and model settings.">
 </p>
 
 ### Development checks
@@ -54,11 +56,14 @@ cd plugin/goally && npm ci && npm test
 cd ../../dashboard && npm ci && npm test && npm run build && npm run lint
 ```
 
-The README images are drawn directly with Skia from fixed fictional content, the dashboard's color tokens and its bundled fonts. They do not capture a desktop or connect to the running app. Regenerate them with:
+The README images use the unchanged application entry, React components, styles and fonts. A separate build replaces only API responses with the public data in `dashboard/readme/fixtures.ts`. The isolated browser blocks other origins; no daemon, account or stored mission is accessed. Chromium exports the real layout as a vector PDF, and Poppler renders it to PNG.
+
+Install Poppler (`brew install poppler` on macOS, `apt install poppler-utils` on Debian/Ubuntu), then regenerate the images:
 
 ```sh
 cd dashboard
 npm ci
+npx playwright install chromium
 npm run render:readme
 npm run render:readme -- --check
 ```
