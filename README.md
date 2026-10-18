@@ -2,6 +2,12 @@
 
 Mission control for big agent tasks in Cursor, Claude Code and Codex. You hand the agent a large task; it audits it into tasks, launches parallel subagents within your limit, and a live board shows what is really happening. A task only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). The Goal Director runs through your choice of Grok Build, Claude or Codex, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
 
+<p align="center">
+  <img src="docs/images/board.png" width="1000" alt="Goally in dark mode: a fictional CSV export mission with eight tasks across To-do, In progress, Testing and Launched; two agents are running and three tasks have proof.">
+</p>
+
+<p align="center"><sub>Product illustrations rendered offline with fictional demo missions and tasks.</sub></p>
+
 ## Install
 
 Goally installs into Cursor, Claude Code and Codex (every one it finds). Paste this into any of them:
@@ -33,6 +39,12 @@ Cursor and Claude Code: `/goally <big task>`. Codex: `$goally <big task>`. The b
 
 For a CLI outside `PATH`, set `GOALLY_GROK_BIN`, `GOALLY_CLAUDE_BIN` or `GOALLY_CODEX_BIN` to its executable path before starting the daemon. Discovery checks that the CLI starts, skips broken launchers, and also checks the bundled Codex CLI in standard macOS app locations. Each provider uses its existing CLI authentication; Goally does not need a separate API key.
 
+<p align="center">
+  <img src="docs/images/director.png" width="400" alt="Goal Director illustration: Codex flags a fictional download flow that still needs verification and sends an instruction to the main chat.">
+  &nbsp;&nbsp;
+  <img src="docs/images/settings.png" width="400" alt="Settings illustration: System, Light and Dark appearance choices, plus Grok Build, Claude and Codex providers with reasoning effort and model settings.">
+</p>
+
 ### Development checks
 
 Use Node 20.19+, 22.12+ or Node 24+ to build the dashboard. The daemon supports Node 20+.
@@ -40,6 +52,15 @@ Use Node 20.19+, 22.12+ or Node 24+ to build the dashboard. The daemon supports 
 ```sh
 cd plugin/goally && npm ci && npm test
 cd ../../dashboard && npm ci && npm test && npm run build && npm run lint
+```
+
+The README images are drawn directly with Skia from fixed fictional content, the dashboard's color tokens and its bundled fonts. They do not capture a desktop or connect to the running app. Regenerate them with:
+
+```sh
+cd dashboard
+npm ci
+npm run render:readme
+npm run render:readme -- --check
 ```
 
 ## How it fits together
