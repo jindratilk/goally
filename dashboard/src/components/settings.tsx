@@ -94,7 +94,6 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
             </button>
           ))}
         </div>
-        <p className="pt-3 text-xs text-muted-foreground">System follows your device and updates automatically.</p>
       </Section>
 
       <Section title="Agents" description="Hooks enforce these on the next event.">

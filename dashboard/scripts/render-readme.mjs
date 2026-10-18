@@ -227,7 +227,6 @@ function settings() {
       icon(symbol, x + 12, 248, 17, p.secondary); text(label, x + 39, 248, 15, p.text, 500);
       if (i === 1) icon('check', x + 176, 248, 17, p.text);
     }
-    text('System follows your device and updates automatically.', 52, 293, 13, p.secondary);
 
     box(24, 342, 712, 394, p.card, 16, p.border);
     text('Goal Director', 52, 368, 24, p.text, 500);
