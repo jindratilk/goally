@@ -3,7 +3,7 @@ import { Check, CheckCheck, Clock, Loader2, Radar, Send, X } from 'lucide-react'
 import { useState } from 'react'
 import { Bar, BarChart, XAxis, YAxis } from 'recharts'
 import { toast } from 'sonner'
-import { post, type Mission, type Overview } from '@/lib/api'
+import { DIRECTOR_LABELS, post, type Mission, type Overview } from '@/lib/api'
 import { ago, KIND_LABEL } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -136,7 +136,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
               <ChartContainer config={kindConfig} className="aspect-auto w-full" style={{ height: 28 + kinds.length * 30 }}>
                 <BarChart data={kinds} layout="vertical" margin={{ left: 0, right: 24 }}>
                   <XAxis type="number" hide allowDecimals={false} />
-                  <YAxis type="category" dataKey="kind" width={120} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: 'var(--muted-foreground)' }} type="category" dataKey="kind" width={120} tickLine={false} axisLine={false} />
                   <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                   <Bar dataKey="n" fill="var(--color-n)" radius={4} barSize={14} isAnimationActive={false} />
                 </BarChart>
@@ -149,7 +149,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
       <div className="flex flex-col gap-4 xl:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Grok Build</CardTitle>
+            <CardTitle>{DIRECTOR_LABELS[cfg.supervisor.provider || 'grok']}</CardTitle>
             <CardDescription>{cfg.supervisor.enabled ? `Checks every ${cfg.supervisor.intervalMin} min${cfg.supervisor.triggerOnAgentStop ? ' and after each agent' : ''}` : 'Paused in settings'}</CardDescription>
             <CardAction>
               {!readOnly && (
@@ -185,7 +185,7 @@ export function Director({ mission, overview, now, readOnly, refresh }: { missio
                 <div className="tabnum">${sup.costUsd.toFixed(3)}</div>
               </div>
             </div>
-            {!overview.supervisor.available && <p className="text-xs text-danger">Grok CLI not found. Install it and run grok login.</p>}
+            {!overview.supervisor.available && <p className="text-xs text-danger">{overview.supervisor.setup || 'Install the selected CLI to run checks.'}</p>}
             {sup.lastError && <p className="text-xs text-danger">{sup.lastError}</p>}
             {sup.lastSummary && <p className="rounded-md bg-muted px-2.5 py-2 text-muted-foreground">{sup.lastSummary}</p>}
           </CardContent>

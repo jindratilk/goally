@@ -1,6 +1,6 @@
 # Goally
 
-Mission control for big agent tasks in Cursor. You hand the agent a large task; it audits it into tasks, launches parallel subagents within your limit, and a live board shows what is really happening. A task only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). Grok Build runs in the background as the Goal Director, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
+Mission control for big agent tasks in Cursor, Claude Code and Codex. You hand the agent a large task; it audits it into tasks, launches parallel subagents within your limit, and a live board shows what is really happening. A task only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). The Goal Director runs through your choice of Grok Build, Claude or Codex, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
 
 ## Install
 
@@ -16,7 +16,7 @@ sh ~/.goally/src/scripts/install.sh    # --only cursor,claude,codex · --no-star
 goally doctor
 ```
 
-The runtime lives in `~/.goally/app`. Then reload Cursor (Developer: Reload Window), or start a new Claude Code / Codex session. See [INSTALL.md](INSTALL.md) for the optional Grok Build sign-in and Desktop Bridge.
+The runtime lives in `~/.goally/app`. Then reload Cursor (Developer: Reload Window), or start a new Claude Code / Codex session. See [INSTALL.md](INSTALL.md) for Goal Director sign-in and Desktop Bridge.
 
 ## Use
 
@@ -25,6 +25,22 @@ Cursor and Claude Code: `/goally <big task>`. Codex: `$goally <big task>`. The b
 - `goally demo 4` plays a simulated mission on the board.
 - `goally tunnel start` opens a free Cloudflare Quick Tunnel and prints a QR code with a private, read-only phone link (also in the sidebar under Phone access, hover for the QR code).
 - `goally send "<text>"` messages the manager from the terminal.
+
+### Settings
+
+- **Goal Director → Provider:** choose Grok Build (the default), Claude or Codex. Install and sign in to that CLI first: `grok login`, `claude auth login` or `codex login`. Switching takes effect on the next check and resets the model to the new CLI's default. Reviews use read-only tools or Codex's read-only sandbox. Conversations are never resumed across providers or models; Codex runs a fresh, ephemeral review each time.
+- **Appearance:** System, Light or Dark. The preference is saved in this browser, including on the read-only phone view. System follows changes to your device appearance; the correct theme is applied before the first paint.
+
+For a CLI outside `PATH`, set `GOALLY_GROK_BIN`, `GOALLY_CLAUDE_BIN` or `GOALLY_CODEX_BIN` to its executable path before starting the daemon. Discovery checks that the CLI starts, skips broken launchers, and also checks the bundled Codex CLI in standard macOS app locations. Each provider uses its existing CLI authentication; Goally does not need a separate API key.
+
+### Development checks
+
+Use Node 20.19+, 22.12+ or Node 24+ to build the dashboard. The daemon supports Node 20+.
+
+```sh
+cd plugin/goally && npm ci && npm test
+cd ../../dashboard && npm ci && npm test && npm run build && npm run lint
+```
 
 ## How it fits together
 

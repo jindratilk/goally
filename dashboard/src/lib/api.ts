@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type TaskStatus = 'todo' | 'running' | 'review' | 'blocked' | 'failed' | 'done'
+export type DirectorProvider = 'grok' | 'claude' | 'codex'
+export const DIRECTOR_LABELS: Record<DirectorProvider, string> = { grok: 'Grok Build', claude: 'Claude', codex: 'Codex' }
 
 export interface Evidence { kind: string; ref: string; t: number }
 export interface Attachment { kind: 'screenshot' | 'file' | 'url' | 'log'; ref: string; label?: string }
@@ -123,7 +125,7 @@ export interface Mission {
 export interface MissionSummary { id: string; title: string; workspace: string; status: Mission['status']; startedAt: number; endedAt: number | null; updatedAt: number; done: number; total: number; go: boolean; elapsedMs: number; agentsTotal: number; findings: number; fullBuilds: number }
 export interface Config {
   maxParallelAgents: number
-  supervisor: { enabled: boolean; intervalMin: number; model: string; effort: string; triggerOnAgentStop: boolean; maxTurns: number; timeoutSec: number }
+  supervisor: { provider: DirectorProvider; enabled: boolean; intervalMin: number; model: string; effort: string; triggerOnAgentStop: boolean; maxTurns: number; timeoutSec: number }
   intervention: 'observe' | 'message'
   delivery: { bridge: 'auto' | 'off'; forceOnHigh: boolean; forceCooldownMin: number; resendAfterMin: number }
   remote: { enabled: boolean; hostname: string; readKey?: string }
@@ -134,7 +136,7 @@ export interface Overview {
   remote: boolean
   config: Config
   bridge: { available: boolean; reason: string; threads: number }
-  supervisor: { bin: string | null; available: boolean }
+  supervisor: { bin: string | null; available: boolean; provider: DirectorProvider; label: string; setup: string; providers: { provider: DirectorProvider; label: string; bin: string | null; available: boolean; setup: string }[] }
   tunnel: TunnelInfo
   localUrl: string
   remoteUrl: string | null

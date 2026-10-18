@@ -5,6 +5,7 @@ import { ensureHome, paths, readJson, writeJsonAtomic } from './paths.mjs';
 export const DEFAULTS = {
   maxParallelAgents: 4,
   supervisor: {
+    provider: 'grok',
     enabled: true,
     intervalMin: 10,
     model: '',
@@ -47,7 +48,11 @@ export function loadConfig() {
 }
 
 export function saveConfig(patch) {
-  const next = sanitizeConfig(deepMerge(loadConfig(), patch));
+  const current = loadConfig();
+  const merged = deepMerge(current, patch);
+  // Model identifiers belong to a provider; never carry a Grok model into Claude/Codex.
+  if (patch.supervisor?.provider && patch.supervisor.provider !== current.supervisor.provider && patch.supervisor.model === undefined) merged.supervisor.model = '';
+  const next = sanitizeConfig(merged);
   writeJsonAtomic(paths.config, next);
   return next;
 }
@@ -66,6 +71,7 @@ export function sanitizeConfig(c) {
   return {
     maxParallelAgents: clampInt(c.maxParallelAgents, 1, 32, d.maxParallelAgents),
     supervisor: {
+      provider: ['grok', 'claude', 'codex'].includes(c.supervisor?.provider) ? c.supervisor.provider : d.supervisor.provider,
       enabled: Boolean(c.supervisor?.enabled),
       intervalMin: clampInt(c.supervisor?.intervalMin, 1, 120, d.supervisor.intervalMin),
       model: String(c.supervisor?.model ?? '').slice(0, 80),

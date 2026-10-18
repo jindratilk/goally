@@ -1,19 +1,11 @@
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { missionDir, paths } from '../paths.mjs';
 import { redact } from './redact.mjs';
 import { stats, verdict } from './views.mjs';
-
-const GROK_CANDIDATES = [
-  process.env.GOALLY_GROK_BIN,
-  path.join(os.homedir(), '.grok', 'bin', 'grok'),
-  path.join(os.homedir(), '.local', 'bin', 'grok'),
-  '/opt/homebrew/bin/grok',
-  '/usr/local/bin/grok',
-].filter(Boolean);
+import { PROVIDERS, directorArgs, directorOutput, providerStatus } from './providers.mjs';
 
 const KINDS = ['overengineering', 'stuck', 'full-build', 'off-scope', 'no-proof', 'integration', 'other'];
 const SEVERITIES = ['low', 'medium', 'high'];
@@ -27,17 +19,6 @@ export function directorBrief() {
     } catch {}
   }
   return 'You are the Goal Director, an independent reviewer of a coding-agent mission. Flag only what matters.';
-}
-
-function findGrok() {
-  return GROK_CANDIDATES.find((p) => {
-    try {
-      fs.accessSync(p, fs.constants.X_OK);
-      return true;
-    } catch {
-      return false;
-    }
-  });
 }
 
 function ago(ms) {
@@ -202,8 +183,8 @@ export class Supervisor {
   }
 
   status() {
-    const bin = findGrok();
-    return { bin: bin || null, available: Boolean(bin) };
+    const provider = this.getConfig().supervisor.provider || 'grok';
+    return { ...providerStatus(provider), providers: Object.keys(PROVIDERS).map(providerStatus) };
   }
 
   start() {
@@ -259,56 +240,36 @@ export class Supervisor {
       mission.append('supervisor.skip', { reason: 'no new activity' });
       return { skipped: 'no new activity' };
     }
-    const bin = findGrok();
+    const provider = cfg.supervisor.provider || 'grok';
+    const { bin, label, setup } = providerStatus(provider);
+    const sessionKey = `${provider}:${cfg.supervisor.model}`;
+    const sessionId = (s.supervisor.sessionKey || 'grok:') === sessionKey ? s.supervisor.sessionId : null;
     this.running.add(mission.id);
     const coveredSeq = s.lastSeq;
     mission.append('supervisor.start', { reason });
     const started = Date.now();
     try {
-      if (!bin) throw new Error('grok CLI not found. Install Grok Build: curl -fsSL https://x.ai/cli/install.sh | bash');
+      if (!bin) throw new Error(`${label} CLI not found. ${setup}`);
       const dir = path.join(missionDir(mission.id), 'supervisor');
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
       const prompt = buildPrompt(mission, { reason, git: gitContext(s.workspace, s.startedAt) });
       const file = path.join(dir, `check-${String(s.supervisor.runs + 1).padStart(3, '0')}.md`);
       fs.writeFileSync(file, prompt, { mode: 0o600 });
-      const args = [
-        '-p', prompt,
-        '--output-format', 'json',
-        '--tools', 'read_file,grep,list_dir',
-        '--disallowed-tools', 'Agent',
-        '--max-turns', String(cfg.supervisor.maxTurns),
-        '--cwd', s.workspace,
-        '--no-auto-update',
-      ];
-      if (cfg.supervisor.model) args.push('-m', cfg.supervisor.model);
-      if (cfg.supervisor.effort) args.push('--effort', cfg.supervisor.effort);
-      if (s.supervisor.sessionId) args.push('--resume', s.supervisor.sessionId);
+      const options = { ...cfg.supervisor, prompt, workspace: s.workspace, sessionId };
+      const args = directorArgs(provider, options);
       const r = await this.exec(bin, args, cfg.supervisor.timeoutSec * 1000, s.workspace);
       fs.writeFileSync(file.replace(/\.md$/, '.out.json'), r.stdout || r.stderr || '', { mode: 0o600 });
-      let out;
-      try {
-        const raw = r.stdout.trim();
-        try {
-          out = JSON.parse(raw);
-        } catch {
-          out = JSON.parse(raw.split('\n').filter(Boolean).at(-1));
-        }
-      } catch {
-        throw new Error((r.stderr || r.stdout || `grok exited ${r.code}`).trim().split('\n').slice(-2).join(' ').slice(0, 240));
-      }
-      if (out.type === 'error' || (r.code !== 0 && !out.text)) throw new Error(String(out.message || `grok exited ${r.code}`).split('\n')[0]);
+      let out = directorOutput(provider, r);
       let parsed = parseVerdict(out.text);
       if (!parsed && out.sessionId) {
-        const fix = await this.exec(bin, [
-          '-p', 'Your last reply was prose. Reply now with ONLY the JSON object in the required output format, based on the review you just did. No tools, no prose, no code fence.',
-          '--output-format', 'json', '--tools', 'read_file', '--max-turns', '1', '--cwd', s.workspace, '--no-auto-update', '--resume', out.sessionId,
-          ...(cfg.supervisor.model ? ['-m', cfg.supervisor.model] : []),
-        ], 120000, s.workspace);
         try {
-          const raw = fix.stdout.trim();
-          let o2;
-          try { o2 = JSON.parse(raw); } catch { o2 = JSON.parse(raw.split('\n').filter(Boolean).at(-1)); }
-          parsed = parseVerdict(o2.text);
+          const fix = await this.exec(bin, directorArgs(provider, {
+            ...options, sessionId: out.sessionId, maxTurns: 1,
+            prompt: 'Your last reply was prose. Reply now with ONLY the JSON object in the required output format, based on the review you just did. No tools, no prose, no code fence.',
+          }), Math.min(120000, Math.max(1, cfg.supervisor.timeoutSec * 1000 - (Date.now() - started))), s.workspace);
+          const repaired = directorOutput(provider, fix);
+          parsed = parseVerdict(repaired.text);
+          if (parsed) out = { ...repaired, costUsd: (out.costUsd || 0) + (repaired.costUsd || 0) };
         } catch {}
       }
       if (!parsed) {
@@ -319,7 +280,7 @@ export class Supervisor {
       this.apply(mission, parsed, cfg);
       mission.append('supervisor.run', {
         ok: true, ms: Date.now() - started, findings: parsed.findings.length, summary: parsed.summary, eta: parsed.eta, reason,
-        sessionId: out.sessionId || s.supervisor.sessionId, costUsd: Number(out.total_cost_usd || 0), coveredSeq,
+        sessionId: out.sessionId || null, sessionKey, provider, costUsd: out.costUsd || 0, coveredSeq,
       });
       this.delivery.flush(mission).catch(() => {});
       return { ok: true, ...parsed };
@@ -361,16 +322,25 @@ export class Supervisor {
       const child = spawn(bin, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GROK_DISABLE_AUTOUPDATER: '1' } });
       let stdout = '';
       let stderr = '';
-      const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
+      let killTimer;
+      let timedOut = false;
+      // A CLI must not hold the director slot forever after ignoring SIGTERM.
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGTERM');
+        killTimer = setTimeout(() => child.kill('SIGKILL'), 5000);
+      }, timeoutMs);
       child.stdout.on('data', (d) => (stdout += d));
       child.stderr.on('data', (d) => (stderr += d));
       child.on('error', (e) => {
         clearTimeout(timer);
+        clearTimeout(killTimer);
         resolve({ code: -1, stdout, stderr: e.message });
       });
       child.on('close', (code) => {
         clearTimeout(timer);
-        resolve({ code, stdout, stderr });
+        clearTimeout(killTimer);
+        resolve({ code, stdout, stderr, timedOut });
       });
     });
   }

@@ -2,7 +2,7 @@ import { Bot, CircleCheck, CircleDashed, CircleX, History, ChartColumn, Loader2,
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { post, useHashRoute, useNow, usePoll, type Mission, type MissionSummary, type Overview } from '@/lib/api'
+import { DIRECTOR_LABELS, post, useHashRoute, useNow, usePoll, type Mission, type MissionSummary, type Overview } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -58,7 +58,7 @@ function NavItem({ active, icon: Icon, label, badge, badgeTone, onClick }: { act
       {active && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-md bg-card shadow-xs ring-1 ring-foreground/10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
       <Icon className="relative size-4" />
       <span className="relative flex-1 text-left">{label}</span>
-      {!!badge && <span className={cn('relative rounded-full px-1.5 text-[11px] font-medium tabnum', badgeTone === 'danger' ? 'bg-danger text-white' : 'text-muted-foreground')}>{badge}</span>}
+      {!!badge && <span className={cn('relative rounded-full px-1.5 text-[11px] font-medium tabnum', badgeTone === 'danger' ? 'bg-danger/10 text-danger' : 'text-muted-foreground')}>{badge}</span>}
     </button>
   )
 }
@@ -178,7 +178,7 @@ function HeaderTitle({ title, readOnly, onRename }: { title: string; readOnly: b
 function StatusMenu({ overview, offline, readOnly }: { overview: Overview; offline: boolean; readOnly: boolean }) {
   const tunnel = overview.tunnel.status
   const rows: { label: string; value: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }[] = [
-    { label: 'Grok Build', value: overview.supervisor.available ? 'Connected' : 'Not found', tone: overview.supervisor.available ? 'success' : 'danger' },
+    { label: DIRECTOR_LABELS[overview.config.supervisor.provider || 'grok'], value: overview.supervisor.available ? 'CLI found' : 'Not found', tone: overview.supervisor.available ? 'success' : 'danger' },
     { label: 'Desktop Bridge', value: overview.bridge.available ? 'Connected' : 'Off', tone: overview.bridge.available ? 'success' : 'warning' },
     { label: 'Phone tunnel', value: tunnel === 'up' ? 'On' : tunnel === 'starting' ? 'Starting' : tunnel === 'error' ? 'Error' : 'Off', tone: tunnel === 'up' ? 'success' : tunnel === 'error' ? 'danger' : 'neutral' },
   ]

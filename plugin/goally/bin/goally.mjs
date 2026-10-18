@@ -122,7 +122,7 @@ async function main() {
   goally open         open the board
   goally status [ws]  print mission status for a workspace
   goally send <text>  message the mission manager from the terminal
-  goally doctor       check hooks, MCP, Grok, Desktop Bridge and tunnel
+  goally doctor       check hooks, MCP, Goal Director, Desktop Bridge and tunnel
   goally demo [x]     simulate a mission on the board (x = speed multiplier)
   goally tunnel [cmd] phone access: start | stop | rotate | status (free Cloudflare Quick Tunnel)
   goally logs         daemon log tail

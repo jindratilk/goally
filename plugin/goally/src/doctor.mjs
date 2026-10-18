@@ -118,17 +118,21 @@ export async function doctor() {
   if (up) {
     try {
       const o = await call('GET', '/api/overview');
-      line(o.supervisor.available ? true : 'warn', 'Grok Build CLI', o.supervisor.bin || 'install: curl -fsSL https://x.ai/cli/install.sh | bash');
+      line(o.supervisor.available ? true : 'warn', `${o.supervisor.label || 'Grok Build'} CLI`, o.supervisor.bin || o.supervisor.setup || 'Select and install a Goal Director provider in Settings.');
       line(o.bridge.available ? true : 'warn', 'Desktop Bridge', o.bridge.reason);
     } catch (e) {
       line(false, 'Overview', e.message);
     }
   }
 
-  const grokAuth = fs.existsSync(path.join(os.homedir(), '.grok', 'auth.json')) || Boolean(process.env.XAI_API_KEY);
-  line(grokAuth ? true : 'warn', 'Grok sign-in', grokAuth ? 'session found' : 'run `grok login`');
-
   const cfg = loadConfig();
+  if (cfg.supervisor.provider === 'grok') {
+    const grokAuth = fs.existsSync(path.join(os.homedir(), '.grok', 'auth.json')) || Boolean(process.env.XAI_API_KEY);
+    line(grokAuth ? true : 'warn', 'Grok sign-in', grokAuth ? 'session found' : 'run `grok login`');
+  } else {
+    const command = cfg.supervisor.provider === 'claude' ? 'claude auth login' : 'codex login';
+    console.log(`${D}Goal Director uses your existing CLI sign-in. If a check reports an authentication error, run ${command}.${X}`);
+  }
   const cf = spawnSync('cloudflared', ['--version'], { encoding: 'utf8' });
   line(cf.status === 0 ? true : 'warn', 'cloudflared', cf.status === 0 ? cf.stdout.trim().split('\n')[0] : 'brew install cloudflared');
   if (cfg.remote.enabled && cfg.remote.hostname) {

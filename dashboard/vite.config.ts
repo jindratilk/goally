@@ -6,10 +6,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } },
   build: { outDir: '../plugin/goally/dashboard', emptyOutDir: true, chunkSizeWarningLimit: 1200 },
   server: {
     port: 5177,
-    proxy: { '/api': 'http://127.0.0.1:4777' },
+    proxy: { '/api': `http://127.0.0.1:${process.env.GOALLY_PORT || 4777}` },
   },
 })

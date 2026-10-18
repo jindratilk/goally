@@ -395,7 +395,9 @@ export function reduce(state, ev) {
       s.lastOk = ev.ok;
       s.lastError = ev.error || null;
       s.lastSeq = ev.coveredSeq ?? s.lastSeq;
-      if (ev.sessionId) s.sessionId = ev.sessionId;
+      if ('sessionId' in ev) s.sessionId = ev.sessionId;
+      if (ev.sessionKey) s.sessionKey = ev.sessionKey;
+      if (ev.provider) s.provider = ev.provider;
       if (ev.costUsd) s.costUsd += ev.costUsd;
       s.lastSummary = ev.summary || s.lastSummary || '';
       if (ev.eta && Number.isFinite(ev.eta.minutes)) state.eta = { minutes: ev.eta.minutes, reason: ev.eta.reason || '', at: ev.t };

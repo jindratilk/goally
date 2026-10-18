@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import type { TaskStatus } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -112,25 +112,29 @@ export function Segmented<T extends string>({
   options,
   onChange,
   disabled,
+  label,
 }: {
   value: T
   options: { value: T; label: string; count?: number }[]
   onChange: (v: T) => void
   disabled?: boolean
+  label?: string
 }) {
+  const id = useId()
   return (
-    <div className="inline-flex h-8 max-w-full items-center overflow-x-auto rounded-lg bg-muted p-0.5 [scrollbar-width:none]">
+    <div role="group" aria-label={label} className="inline-flex h-8 max-w-full items-center overflow-x-auto rounded-lg bg-muted p-0.5 [scrollbar-width:none]">
       {options.map((o) => (
         <button
           key={o.value}
           disabled={disabled}
+          aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
             'relative inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-50',
             value === o.value ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {value === o.value && <motion.span layoutId={`seg-${options.map((x) => x.value).join('')}`} className="absolute inset-0 rounded-md bg-card shadow-sm ring-1 ring-foreground/10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+          {value === o.value && <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-md bg-card shadow-sm ring-1 ring-foreground/10" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
           <span className="relative">{o.label}</span>
           {o.count != null && <span className="relative text-[10px] text-subtle tabnum">{o.count}</span>}
         </button>

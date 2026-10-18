@@ -48,8 +48,9 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Tokens sampled from cursor.com (light theme) */
+/* A warm neutral family shared by both appearances. */
 :root {
+  color-scheme: light;
   --ink: #26251e;
   --background: #f7f7f4;
   --foreground: var(--ink);
@@ -62,23 +63,66 @@
   --secondary: #ebeae5;
   --secondary-foreground: var(--ink);
   --muted: #f2f1ed;
-  --muted-foreground: color-mix(in oklab, var(--ink) 58%, transparent);
-  --subtle: color-mix(in oklab, var(--ink) 40%, transparent);
+  --muted-foreground: #6b6a61;
+  --subtle: #6c6b62;
   --accent: #ebeae5;
   --accent-foreground: var(--ink);
-  --destructive: #cf2d56;
+  --destructive: var(--danger);
   --border: color-mix(in oklab, var(--ink) 10%, transparent);
   --input: color-mix(in oklab, var(--ink) 16%, transparent);
   --ring: color-mix(in oklab, var(--ink) 35%, transparent);
   --sidebar: #f2f1ed;
-  --success: #1f8a65;
-  --danger: #cf2d56;
-  --warning: #f54e00;
+  --success: #187454;
+  --danger: #bb244a;
+  --warning: #b33c0a;
   --chart-1: var(--ink);
-  --chart-2: #1f8a65;
-  --chart-3: #f54e00;
-  --chart-4: #cf2d56;
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: var(--danger);
   --radius: 0.5rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --ink: #eeeee7;
+  --background: #191a17;
+  --card: #22231f;
+  --popover: #292a25;
+  --primary-foreground: #191a17;
+  --secondary: #30312b;
+  --muted: #2b2c26;
+  --muted-foreground: #b0b1a5;
+  --subtle: #97998c;
+  --accent: #35362e;
+  --border: #3c3e34;
+  --input: #55584a;
+  --ring: #b4b7a5;
+  --sidebar: #1d1e1a;
+  --success: #80c6a3;
+  --danger: #f493a5;
+  --warning: #eeb27d;
+}
+
+/* Fixed miniature palettes let users compare appearances in either theme. */
+.appearance-preview {
+  --preview-bg: #f7f7f4;
+  --preview-sidebar: #eeeee8;
+  --preview-card: #fff;
+  --preview-line: #d9d9d0;
+  --preview-ink: #797a6d;
+  background: var(--preview-bg);
+}
+.appearance-preview[data-appearance="dark"] {
+  --preview-bg: #191a17;
+  --preview-sidebar: #1d1e1a;
+  --preview-card: #292a25;
+  --preview-line: #44463b;
+  --preview-ink: #b0b1a5;
+}
+.appearance-preview[data-appearance="system"] {
+  --preview-bg: linear-gradient(115deg, #f7f7f4 49.5%, #191a17 50%);
+  --preview-card: color-mix(in oklab, #8c8f7a 12%, transparent);
+  --preview-line: #93968455;
 }
 
 @layer base {
@@ -90,6 +134,11 @@
     min-height: 100dvh;
   }
   .tabnum { font-variant-numeric: tabular-nums; }
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  ::selection { background: var(--foreground); color: var(--background); }
 }
 
 @media (prefers-reduced-motion: reduce) {

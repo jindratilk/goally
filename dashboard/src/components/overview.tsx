@@ -82,8 +82,8 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={(t) => clock(t - mission.startedAt)} tickLine={false} axisLine={false} minTickGap={48} />
-                  <YAxis allowDecimals={false} domain={[0, Math.max(config.maxParallelAgents + 1, s.peakParallel)]} tickLine={false} axisLine={false} width={40} />
+                  <XAxis tick={{ fill: 'var(--muted-foreground)' }} dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={(t) => clock(t - mission.startedAt)} tickLine={false} axisLine={false} minTickGap={48} />
+                  <YAxis tick={{ fill: 'var(--muted-foreground)' }} allowDecimals={false} domain={[0, Math.max(config.maxParallelAgents + 1, s.peakParallel)]} tickLine={false} axisLine={false} width={40} />
                   <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => `T+${clock(Number(p?.[0]?.payload?.t) - mission.startedAt)}`} />} />
                   <ReferenceLine y={config.maxParallelAgents} stroke="var(--warning)" strokeDasharray="4 4" />
                   <Area type="stepAfter" dataKey="n" stroke="var(--color-n)" strokeWidth={1.5} fill="url(#fillN)" isAnimationActive={false} />
@@ -106,7 +106,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
             <ChartContainer config={mixConfig} className="aspect-auto h-32 w-full">
               <BarChart data={mix} layout="vertical" margin={{ left: 0, right: 24 }}>
                 <XAxis type="number" hide allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={84} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: 'var(--muted-foreground)' }} type="category" dataKey="name" width={84} tickLine={false} axisLine={false} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                 <Bar dataKey="v" radius={4} barSize={14} isAnimationActive={false} label={{ position: 'right', fontSize: 12, fill: 'var(--muted-foreground)' }}>
                   {mix.map((m) => (
