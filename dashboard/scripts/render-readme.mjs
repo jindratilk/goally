@@ -25,7 +25,9 @@ let server;
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 const variants = [
   { name: 'board', theme: 'dark', height: 900, ready: 'Filter tasks' },
-  { name: 'director', theme: 'dark', height: 900, ready: 'Tell the manager something…' },
+  { name: 'director', theme: 'dark', height: 1040, ready: 'Tell the manager something…' },
+  { name: 'history', theme: 'light', width: 1680, height: 1320, ready: null },
+  { name: 'activity', theme: 'dark', height: 1120, ready: 'Search' },
   { name: 'settings', theme: 'light', height: 1480, ready: null },
 ];
 
@@ -67,8 +69,9 @@ try {
   if (!check) await fs.mkdir(output, { recursive: true });
 
   for (const variant of variants) {
+    const width = variant.width ?? 1440;
     const context = await browser.newContext({
-      viewport: { width: 1440, height: variant.height }, deviceScaleFactor: 2,
+      viewport: { width, height: variant.height }, deviceScaleFactor: 2,
       colorScheme: variant.theme, reducedMotion: 'reduce', serviceWorkers: 'block',
     });
     await context.route('**/*', (route) => {
@@ -82,9 +85,11 @@ try {
     const page = await context.newPage();
     page.on('pageerror', (error) => failures.push(error.message));
     page.on('console', (message) => { if (message.type() === 'error') failures.push(message.text()); });
-    await page.goto(`${origin}/#/m/readme-csv-export/${variant.name}`, { waitUntil: 'load' });
+    await page.goto(`${origin}/#/m/readme-fokly-onboarding/${variant.name}`, { waitUntil: 'load' });
     if (variant.ready) await page.getByPlaceholder(variant.ready, { exact: true }).waitFor();
+    else if (variant.name === 'history') await page.getByText('All missions', { exact: true }).waitFor();
     else await page.getByRole('group', { name: 'Color theme', exact: true }).waitFor();
+    await page.locator('aside').getByRole('button', { name: 'Board 15', exact: true }).waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForFunction(() => {
       const content = document.querySelector('main > :last-child');
@@ -92,35 +97,99 @@ try {
     });
 
     // Assert real product behavior, rather than a separate drawing of that behavior.
-    assert.equal(await page.locator('aside').getByRole('button', { name: 'CSV export for reports 3/8', exact: true }).count(), 1);
-    if (variant.name !== 'settings') {
-      assert.equal(await page.locator('header').getByText('~14 min left', { exact: true }).count(), 1);
-      assert.equal(await page.locator('header').getByLabel('63% remaining', { exact: true }).count(), 1);
+    assert.equal(await page.title(), 'NO-GO · Fokly: onboarding');
+    assert.equal(await page.locator('aside').getByRole('button', { name: 'Fokly: onboarding 5/20', exact: true }).count(), 1);
+    assert.equal(await page.locator('aside').getByRole('button', { name: 'Menu bar controls 7/12', exact: true }).count(), 1);
+    assert.equal(await page.locator('aside').getByRole('button', { name: 'Energy footprint 8/8', exact: true }).count(), 1);
+    const global = variant.name === 'settings' || variant.name === 'history';
+    if (!global) {
+      assert.equal(await page.locator('header').getByText('~22 min left', { exact: true }).count(), 1);
+      assert.equal(await page.locator('header').getByLabel('75% remaining', { exact: true }).count(), 1);
       assert.ok(!(await page.locator('header').innerText()).includes('proven'));
     }
     if (variant.name === 'board') {
-      assert.equal(await page.getByRole('button', { name: 'CT-4 · ui Add the export button to reports ui-agent · 2m 18s · 16 tools', exact: true }).count(), 1);
+      assert.equal(await page.locator('main').getByRole('button', { name: /^CT-\d+ ·/ }).count(), 20);
+      const task = page.getByRole('button', { name: 'CT-6 · permissions Resume after System Settings permissions-agent · 5m 12s · 17 tools', exact: true });
+      assert.equal(await task.count(), 1);
+      // Exercise the real task sheet and filter, so filled cards have useful detail.
+      await task.click();
+      await page.getByRole('heading', { name: 'Resume after System Settings', exact: true }).waitFor();
+      assert.equal(await page.getByText('swift test --filter PermissionReturnTests', { exact: true }).count(), 1);
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page.getByRole('heading', { name: 'Resume after System Settings', exact: true }).waitFor({ state: 'hidden' });
+      await page.getByPlaceholder('Filter tasks', { exact: true }).fill('download');
+      assert.equal(await page.locator('main').getByRole('button', { name: /^CT-\d+ ·/ }).count(), 3);
+      await page.getByPlaceholder('Filter tasks', { exact: true }).fill('');
+      assert.equal(await page.locator('main').getByRole('button', { name: /^CT-\d+ ·/ }).count(), 20);
+      await page.getByPlaceholder('Filter tasks', { exact: true }).blur();
+      await page.waitForFunction(() => [...document.querySelectorAll('main button')].every((button) => getComputedStyle(button).transform === 'none'));
     }
     if (variant.name === 'director') {
       assert.equal(await page.getByRole('button', { name: 'Check now', exact: true }).count(), 1);
-      assert.equal(await page.getByText('Download flow needs verification', { exact: true }).count(), 1);
+      assert.equal(await page.getByText('Verify the complete first-run handoff', { exact: true }).count(), 1);
+      assert.equal(await page.getByText('Prevent overlapping download retries', { exact: true }).count(), 1);
+      await page.getByRole('button', { name: 'Closed 1', exact: true }).click();
+      await page.getByText('Keep setup state in the existing store', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Open 2', exact: true }).click();
+      await page.getByText('Verify the complete first-run handoff', { exact: true }).waitFor();
+      await page.getByText('Keep setup state in the existing store', { exact: true }).waitFor({ state: 'hidden' });
+    }
+    if (variant.name === 'history') {
+      assert.equal(await page.locator('tbody tr').count(), 12);
+      assert.equal(await page.locator('tbody').getByText('GO', { exact: true }).count(), 8);
+      assert.equal(await page.getByText('78/108', { exact: true }).count(), 1);
+      assert.equal(await page.locator('tbody').getByText('paused', { exact: true }).count(), 1);
+    }
+    if (variant.name === 'activity') {
+      assert.equal(await page.getByRole('button', { name: 'Events 22', exact: true }).count(), 1);
+      await page.getByRole('button', { name: 'Commands 14', exact: true }).click();
+      assert.equal(await page.locator('tbody tr').count(), 14);
+      await page.getByRole('button', { name: 'Events 22', exact: true }).click();
+      await page.getByText('Reviewing keyboard focus after the menu bar popover opens.', { exact: true }).waitFor();
     }
     if (variant.name === 'settings') {
       assert.equal(await page.getByRole('button', { name: 'Light', exact: true }).getAttribute('aria-pressed'), 'true');
       assert.equal(await page.getByRole('button', { name: 'Codex CLI found', exact: true }).getAttribute('aria-pressed'), 'true');
     }
     assert.deepEqual(failures, [], 'Renderer must not contact any live source or produce app errors.');
-    await page.evaluate(() => { for (const animation of document.getAnimations()) { if (typeof animation.currentTime === 'number') { animation.pause(); animation.currentTime = 0; } } });
+    await page.mouse.move(0, 0);
+    await page.waitForFunction(() => [...document.querySelectorAll('main button > span.absolute')].every((indicator) => getComputedStyle(indicator).transform === 'none' && getComputedStyle(indicator).opacity === '1'));
+    // Finish finite transitions before export; freezing an exiting card at time zero
+    // would preserve a transient layout that the settled application never shows.
+    await page.evaluate(async () => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      const animations = document.getAnimations();
+      await Promise.all(animations.filter((animation) => typeof animation.currentTime === 'number' && animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished.catch(() => {})));
+      for (const animation of document.getAnimations()) {
+        if (animation.effect?.getTiming().iterations === Infinity && typeof animation.currentTime === 'number') {
+          animation.pause(); animation.currentTime = 0;
+        }
+      }
+    });
+    if (variant.name === 'history') {
+      await page.waitForFunction(() => {
+        const ticks = [...document.querySelectorAll('.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value')];
+        return ticks.length === 12 && ticks.every((tick) => tick.textContent.trim().length > 0);
+      });
+      const labels = await page.locator('.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value').evaluateAll((ticks) => ticks.map((tick) => ({ text: tick.textContent, left: tick.getBoundingClientRect().left, right: tick.getBoundingClientRect().right })));
+      assert.equal(labels.some((label, i) => i > 0 && label.left < labels[i - 1].right + 3), false, `History chart labels must remain readable: ${JSON.stringify(labels)}`);
+    }
 
     // Export the layout as a vector document, then rasterize it. No screen capture.
     await page.emulateMedia({ media: 'screen' });
     await page.addStyleTag({ content: ':root { print-color-adjust: exact; -webkit-print-color-adjust: exact; }' });
     const height = await page.evaluate(() => Math.max(innerHeight, document.documentElement.scrollHeight));
     const pdfPath = path.join(scratch, `${variant.name}.pdf`);
-    await page.pdf({ path: pdfPath, width: '1440px', height: `${height}px`, printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } });
+    await page.pdf({ path: pdfPath, width: `${width}px`, height: `${height}px`, printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } });
     const { stdout: pdfText } = await run('pdftotext', ['-layout', pdfPath, '-']);
     assert.ok(pdfText.includes('Goally'), 'The rendered document must preserve the real application header.');
-    if (variant.name !== 'settings') assert.ok(pdfText.includes('~14 min left'), 'The rendered header must show the real ETA.');
+    if (!global) assert.ok(pdfText.includes('~22 min left'), 'The rendered header must show the real ETA.');
+    if (variant.name === 'board') {
+      assert.equal((pdfText.match(/CT-\d+\s+·/g) ?? []).length, 20, 'Every task must be present in the exported board.');
+      assert.ok(pdfText.includes('Energy footprint'), 'The finished goals must also be visible in the exported sidebar.');
+    }
+    if (variant.name === 'history') assert.ok(pdfText.includes('78/108') && pdfText.includes('Energy footprint'), 'The complete mission history must be exported.');
+    if (variant.name === 'director') assert.ok(!pdfText.includes('Keep setup state in the existing store'), 'Closed findings must not linger in the exported Open tab.');
     const pngRoot = path.join(scratch, variant.name);
     await run('pdftoppm', ['-singlefile', '-png', '-r', '192', pdfPath, pngRoot], { timeout: 30000 });
     const png = await fs.readFile(pngRoot + '.png');

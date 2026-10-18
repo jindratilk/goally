@@ -3,10 +3,10 @@
 Mission control for big agent tasks in Cursor, Claude Code and Codex. You hand the agent a large task; it audits it into tasks, launches parallel subagents within your limit, and a live board shows what is really happening. A task only counts as done when a passing check was observed after the last edit (GO/NO-GO poll). The Goal Director runs through your choice of Grok Build, Claude or Codex, catches over-engineering, stuck agents, full builds and missing proof, and writes corrections straight into the manager chat.
 
 <p align="center">
-  <img src="docs/images/board.png" width="1000" alt="Goally in dark mode: a fictional CSV export mission with eight tasks across To-do, In progress, Testing and Launched; two agents are running and three tasks have proof.">
+  <img src="docs/images/board.png" width="1000" alt="Goally in dark mode: a fictional Fokly onboarding goal with 20 tasks, four running agents, five verified tasks, and a sidebar of active and finished goals.">
 </p>
 
-<p align="center"><sub>Rendered from the actual Goally UI with fictional demo missions and tasks.</sub></p>
+<p align="center"><sub>Actual Goally UI, rendered with a fictional Fokly development scenario: onboarding, permissions, local model setup and the menu bar handoff. All goals, activity and history are demo data.</sub></p>
 
 ## Install
 
@@ -40,8 +40,27 @@ Cursor and Claude Code: `/goally <big task>`. Codex: `$goally <big task>`. The b
 For a CLI outside `PATH`, set `GOALLY_GROK_BIN`, `GOALLY_CLAUDE_BIN` or `GOALLY_CODEX_BIN` to its executable path before starting the daemon. Discovery checks that the CLI starts, skips broken launchers, and also checks the bundled Codex CLI in standard macOS app locations. Each provider uses its existing CLI authentication; Goally does not need a separate API key.
 
 <p align="center">
-  <img src="docs/images/director.png" width="1000" alt="The actual Goal Director view with fictional data: a missing-proof finding, Codex review status, and delivery to the main chat.">
+  <img src="docs/images/director.png" width="1000" alt="Goal Director reviewing the fictional Fokly onboarding: first-run integration proof, download retry ownership, Codex checks, and delivered, accepted and resolved guidance.">
 </p>
+
+### Mission history
+
+Active goals sit alongside finished work. History shows task completion, agent counts and elapsed time across sessions. This fictional Fokly project includes menu bar controls, reminder handoff, permission recovery, accessibility and eight completed goals.
+
+<p align="center">
+  <img src="docs/images/history.png" width="1000" alt="Goally History in light mode: 12 fictional Fokly missions, 78 of 108 tasks launched, eight goals at GO, a task chart and the complete mission table.">
+</p>
+
+<details>
+<summary>See mission activity</summary>
+
+<p align="center">
+  <img src="docs/images/activity.png" width="1000" alt="Fokly onboarding activity in the actual Goally UI: 22 events including accepted proof, targeted checks, a failed download recovery check, and Goal Director guidance.">
+</p>
+
+</details>
+
+### Appearance and providers
 
 <p align="center">
   <img src="docs/images/settings.png" width="1000" alt="The actual Settings view: System, Light and Dark appearance choices, plus Grok Build, Claude and Codex providers with reasoning effort and model settings.">
