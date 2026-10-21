@@ -113,9 +113,12 @@ export async function runDemo({ speed = 1 } = {}) {
   await sleep(1.2);
   await sub('sa-csv', 'CT-3', 'Harden CSV escaping: commas, quotes, newlines, unicode');
   await claim('CT-3', 'csv-agent');
-  await sleep(2);
+  await sleep(1.2);
+  await hook('subagentStart', { conversation_id: 'sa-api', subagent_id: 'sa-api-scan', subagent_type: 'explore', task: '[CT-1] Find the query builder the reports page already uses', parent_conversation_id: 'sa-api', subagent_model: 'composer-2.5', is_parallel_worker: false });
+  await sleep(1);
   await edit('sa-api', 'src/api/export.ts');
   await shell('sa-api', 'rg "reports" src/api');
+  await hook('subagentStop', { conversation_id: 'sa-api', subagent_id: 'sa-api-scan', subagent_type: 'explore', status: 'completed', task: '[CT-1] Find the query builder the reports page already uses', summary: 'reportsQuery() in src/db/reports.ts takes the same filters.', duration_ms: 9000, message_count: 4, tool_call_count: 6, modified_files: [] });
   await sleep(1.5);
   await edit('sa-ui', 'src/ui/ExportButton.tsx');
   await edit('sa-csv', 'src/lib/csv.ts');

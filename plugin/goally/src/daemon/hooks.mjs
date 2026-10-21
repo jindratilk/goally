@@ -98,6 +98,7 @@ export class HookHandler {
       model: payload.subagent_model,
       parallel: payload.is_parallel_worker,
       branch: payload.git_branch,
+      parentId: s.agents[payload.parent_conversation_id] ? payload.parent_conversation_id : s.agents[payload.conversation_id] ? payload.conversation_id : null,
     });
     return { permission: 'allow' };
   }

@@ -38,6 +38,8 @@ export function shortPath(p: string, workspace?: string) {
   return parts.length > 3 ? `…/${parts.slice(-3).join('/')}` : s
 }
 
+export const stripTag = (s: string) => s.replace(/^\[CT-\d+\]\s*/, '')
+
 export function pct(n: number | null | undefined) {
   return n == null ? '—' : `${Math.round(n * 100)}%`
 }

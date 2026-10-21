@@ -223,6 +223,7 @@ export function reduce(state, ev) {
         model: ev.model || '',
         parallel: Boolean(ev.parallel),
         branch: ev.branch || '',
+        parentId: ev.parentId || null,
         status: 'running',
         startedAt: ev.t,
         endedAt: null,
@@ -239,7 +240,7 @@ export function reduce(state, ev) {
       const task = findTask(state, a.taskId);
       if (task) {
         if (!task.agentIds.includes(a.id)) task.agentIds.push(a.id);
-        task.owner = a.id;
+        if (!a.parentId) task.owner = a.id;
         task.updatedAt = ev.t;
       }
       state.parallel.push({ t: ev.t, n: runningCount(state) });

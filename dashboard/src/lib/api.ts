@@ -44,6 +44,7 @@ export interface Agent {
   taskId: string | null
   model: string
   parallel: boolean
+  parentId?: string | null
   status: 'running' | 'completed' | 'error' | 'aborted'
   startedAt: number
   endedAt: number | null
