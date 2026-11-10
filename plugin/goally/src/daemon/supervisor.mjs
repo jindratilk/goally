@@ -236,10 +236,8 @@ export class Supervisor {
     if (this.running.has(mission.id)) return { skipped: 'already running' };
     const cfg = this.getConfig();
     const s = mission.state;
-    if (!force && s.lastSeq - (s.supervisor.lastSeq || 0) < 3) {
-      mission.append('supervisor.skip', { reason: 'no new activity' });
-      return { skipped: 'no new activity' };
-    }
+    // Logging a skip would itself look like activity, so a dead mission would get reviewed forever.
+    if (!force && (s.activity || 0) - (s.supervisor.coveredActivity || 0) < 3) return { skipped: 'no new activity' };
     const provider = cfg.supervisor.provider || 'grok';
     const { bin, label, setup } = providerStatus(provider);
     const sessionKey = `${provider}:${cfg.supervisor.model}`;

@@ -56,10 +56,10 @@ export function GoalProgress({ mission, now }: { mission: Mission; now: number }
         <Tooltip>
           <TooltipTrigger render={<span tabIndex={0} className={cn('hidden cursor-default items-center gap-1.5 rounded-md text-sm tabnum outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex', complete ? 'text-success' : 'text-muted-foreground')} />}>
             <Clock className="size-3.5" />
-            {humanEta(etaMs(mission, now))}
+            {mission.status === 'aborted' ? 'Abandoned' : humanEta(etaMs(mission, now))}
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-72">
-            {complete ? 'Every task is proven' : mission.eta ? `Goal Director estimate · ${mission.eta.reason || 'from pace and remaining work'}` : 'From the pace so far, until the Goal Director weighs in'}
+            {complete ? 'Every task is proven' : mission.status === 'aborted' ? 'Closed from the board; no estimate' : mission.eta ? `Goal Director estimate · ${mission.eta.reason || 'from pace and remaining work'}` : 'From the pace so far, until the Goal Director weighs in'}
           </TooltipContent>
         </Tooltip>
       </div>
