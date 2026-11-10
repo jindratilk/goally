@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { DIRECTOR_LABELS, post, useHashRoute, useNow, usePoll, type Mission, type MissionSummary, type Overview } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Toaster } from '@/components/ui/sonner'
 import { ActivityView } from '@/components/activity'
@@ -253,6 +254,7 @@ export default function App() {
   const [route, go] = useHashRoute()
   const [task, setTask] = useState<string | null>(null)
   const [nav, setNav] = useState(false)
+  const [abandoning, setAbandoning] = useState(false)
   const ov = usePoll<Overview>('/api/overview', 4000)
   const overview = ov.data
   const missionId = route.mission ?? overview?.defaultMission ?? null
@@ -280,11 +282,14 @@ export default function App() {
     }
   }
 
-  const setStatus = async (status: 'active' | 'paused') => {
+  const setStatus = async (status: 'active' | 'paused' | 'aborted') => {
     if (!mission) return
     try {
       await post(`/api/missions/${mission.id}/status`, { status })
-      toast(status === 'paused' ? 'Mission paused' : 'Mission resumed', { description: status === 'paused' ? 'New agent launches are denied.' : 'Agents may launch again.' })
+      if (status === 'aborted') toast('Mission abandoned', { description: 'Moved to History. The Goal Director stops checking it.' })
+      else toast(status === 'paused' ? 'Mission paused' : 'Mission resumed', { description: status === 'paused' ? 'New agent launches are denied.' : 'Agents may launch again.' })
+      setAbandoning(false)
+      ov.refresh()
       ms.refresh()
     } catch (e) {
       toast.error((e as Error).message)
@@ -351,6 +356,28 @@ export default function App() {
                 {mission.status === 'paused' ? 'Resume' : 'Pause'}
               </Button>
             )}
+            {live && !readOnly && !global && (
+              <Button size="sm" variant="ghost" onClick={() => setAbandoning(true)}>
+                <CircleX />
+                Abandon
+              </Button>
+            )}
+            <Dialog open={abandoning} onOpenChange={setAbandoning}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Abandon this mission?</DialogTitle>
+                  <DialogDescription>
+                    Use this when the agent session behind it is gone. The mission moves to History as aborted, the Goal Director stops checking it, and the agent itself is not touched.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="outline" />}>Keep it</DialogClose>
+                  <Button variant="destructive" onClick={() => setStatus('aborted')}>
+                    Abandon mission
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </header>
 

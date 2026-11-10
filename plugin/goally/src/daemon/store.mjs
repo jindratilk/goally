@@ -110,6 +110,8 @@ export function reduce(state, ev) {
   if (!state) return state;
   state.updatedAt = ev.t;
   state.lastSeq = ev.seq;
+  // Mission activity the Goal Director has something to review; its own events never count.
+  if (!ev.type.startsWith('supervisor.')) state.activity = (state.activity || 0) + 1;
   const agentLabel = (id) => (id === 'main' ? 'MAIN' : /^CT-\d+$/.test(id) ? id : state.agents[id]?.taskId || id?.slice(0, 8) || '?');
 
   switch (ev.type) {
@@ -397,6 +399,7 @@ export function reduce(state, ev) {
       s.lastOk = ev.ok;
       s.lastError = ev.error || null;
       s.lastSeq = ev.coveredSeq ?? s.lastSeq;
+      if (ev.ok) s.coveredActivity = state.activity || 0;
       if ('sessionId' in ev) s.sessionId = ev.sessionId;
       if (ev.sessionKey) s.sessionKey = ev.sessionKey;
       if (ev.provider) s.provider = ev.provider;
