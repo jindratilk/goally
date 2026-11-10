@@ -203,7 +203,7 @@ export async function startDaemon() {
       const waiting = task.depends.filter((d) => !['done', 'dropped'].includes(s.tasks.find((t) => t.id === d)?.status));
       if (waiting.length) throw Object.assign(new Error(`${task.id} waits for ${waiting.join(', ')}. Pick another task or ask the manager.`), { status: 409 });
       const running = s.tasks.filter((t) => t.status === 'running' && t.id !== task.id).length;
-      if (task.status !== 'running' && running >= config.maxParallelAgents) {
+      if (task.status !== 'running' && config.maxParallelAgents > 0 && running >= config.maxParallelAgents) {
         throw Object.assign(new Error(`${running} tasks are in progress (limit ${config.maxParallelAgents}). Wait for one to finish.`), { status: 429 });
       }
       m.append('task.claim', { taskId: task.id, by });

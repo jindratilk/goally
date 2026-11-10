@@ -26,7 +26,7 @@ export function Agents({ mission, config, now, onOpenTask }: { mission: Mission;
           <div>
             <CardTitle>Agents</CardTitle>
             <CardDescription>
-              {running} of {config.maxParallelAgents} slots in use
+              {config.maxParallelAgents ? `${running} of ${config.maxParallelAgents} slots in use` : `${running} running · no limit`}
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-3">
