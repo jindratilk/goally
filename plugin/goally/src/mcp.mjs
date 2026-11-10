@@ -335,7 +335,8 @@ export async function runMcp() {
     },
     wrap(async () => {
       const r = await rpc('finish', {});
-      return r.ok ? text('Mission complete · every task proven.') : fail(`Mission is NO-GO:\n${r.blockers.map((b) => `- ${b}`).join('\n')}`);
+      const left = r.warnings?.length ? `\nGoal Director findings left open:\n${r.warnings.map((w) => `- ${w}`).join('\n')}` : '';
+      return r.ok ? text(`Mission complete · every task proven.${left}`) : fail(`Mission is NO-GO:\n${r.blockers.map((b) => `- ${b}`).join('\n')}`);
     }),
   );
 

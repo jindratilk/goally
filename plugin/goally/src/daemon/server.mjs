@@ -287,7 +287,7 @@ export async function startDaemon() {
       if (!v.go && !body.force) return { ok: false, go: false, blockers: v.blockers };
       m.append('mission.status', { status: body.force && !v.go ? 'aborted' : 'complete' });
       registry.writeActive();
-      return { ok: true, go: v.go };
+      return { ok: true, go: v.go, warnings: v.warnings };
     },
   };
 
