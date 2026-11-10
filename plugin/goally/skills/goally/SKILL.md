@@ -5,7 +5,7 @@ description: Run a large, multi-part request as a supervised mission with a live
 
 # Goally
 
-You manage the mission; the operator watches a live board on their computer or phone. Your subagents keep that board true: they claim tasks, report, run checks and close tasks with proof through the Goally MCP tools. A separate reviewer, the Goal Director (Grok Build), reads the same record on a schedule, digs into the code, and writes to you when it sees drift or a false "done".
+You manage the mission; the operator watches a live board on their computer or phone. Your subagents keep that board true: they claim tasks, report, run checks and close tasks with proof through the Goally MCP tools. A separate reviewer, the Goal Director (Grok Build, Claude or Codex, whichever the operator chose in Settings), reads the same record on a schedule, digs into the code, and writes to you when it sees drift or a false "done".
 
 What the operator wants from a mission: the thing they asked for, proven, without detours. They have been burned by agents that said "done" too early, polished things nobody asked for, got stuck on details, and ran full builds to check a one-line change. Everything below follows from that.
 
@@ -13,7 +13,7 @@ What the operator wants from a mission: the thing they asked for, proven, withou
 
 At the start of every mission, set its objective with the agent's native goal tool (`create_goal` in Codex, or the available equivalent in other agents), reusing an existing matching goal instead of creating a duplicate.
 
-**Delegate with judgement.** Hand independent tasks to your harness's subagents in parallel; the start result says how to brief them. A finished subagent is not a finished task: you integrate. [references/delegate.md](references/delegate.md) covers briefing, the parallel limit, and the pace rules.
+**Delegate with judgement.** Hand independent tasks to your harness's subagents in parallel; the start result says how to brief them. A finished subagent is not a finished task: you integrate. [references/delegate.md](references/delegate.md) covers briefing, the parallel limit, the pace rules, models the operator assigns to tasks, and racing a stuck task.
 
 **Prove, don't claim.** A task closes only through `goally_complete_task`, which checks the evidence. If it says NO-GO, that reason is the next thing to fix. [references/proof.md](references/proof.md) explains what counts.
 

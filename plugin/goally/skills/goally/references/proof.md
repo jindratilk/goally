@@ -13,4 +13,6 @@ Pass `files` to `goally_check` with the files your task changed. Then edits by p
 
 A rejection says exactly what's missing ("Files changed after the passing check"). Fix that and complete again; there is no appeal.
 
-The whole mission is GO when every task is proven and every message is answered. `goally_finish` refuses otherwise and lists what's missing. That list is the honest answer to "are we done?"
+Dropping a task is not a way around proof. Drop only work the goal no longer needs, with the reason in the note; the Goal Director reads it.
+
+The whole mission is GO when every task is proven or dropped and every message is answered. `goally_finish` refuses otherwise and lists what's missing. That list is the honest answer to "are we done?"

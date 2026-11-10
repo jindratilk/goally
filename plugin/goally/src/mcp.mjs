@@ -82,6 +82,7 @@ export async function runMcp() {
     verify: z.string().describe('The smallest targeted check that proves it: an exact test command, a URL, or "manual: <what to look at>"'),
     depends: z.array(z.string()).optional().describe('IDs of tasks whose output this one needs, e.g. ["CT-1"]'),
     lane: z.string().optional().describe('One of the mission lanes, e.g. backend, ui, qa, release'),
+    model: z.string().optional().describe('Only when the operator assigned a model to this task, e.g. "claude-opus-5-5". Leave empty otherwise'),
   });
   const agent = z.string().describe('Your agent name as the operator should see it on the board, e.g. "ui-agent" or "manager"');
 
@@ -109,7 +110,7 @@ export async function runMcp() {
         'Give the operator the board URL now (in Cursor, open it in the built-in browser).',
         '',
         `Lanes: ${r.lanes.join(', ')}`,
-        ...r.tasks.map((t) => `- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.depends?.length ? ` · after ${t.depends.join(', ')}` : ''}`),
+        ...r.tasks.map((t) => `- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.depends?.length ? ` · after ${t.depends.join(', ')}` : ''}${t.model ? ` · model ${t.model}` : ''}`),
         '',
         `Hand ready tasks to your subagents, at most ${r.maxParallelAgents} in progress at once. A subagent needs only this line in its brief, plus anything from this chat it can't find itself:`,
         '  "You are on Goally task CT-n. Call goally_claim_task with taskId CT-n and your agent name, then follow what it returns."',
@@ -145,6 +146,7 @@ export async function runMcp() {
         ...(t.description ? [`Task: ${t.description}`] : []),
         `Acceptance: ${t.acceptance || '—'}`,
         `Verify: ${t.verify || '—'}`,
+        ...(t.model ? [`Model: the operator assigned ${t.model} to this task.`] : []),
         ...r.inputs.map((i) => `Input from ${i.id} (${i.title}): ${i.result || 'no summary'}${i.evidence.length ? ` · ${i.evidence.join(', ')}` : ''}`),
         ...(r.history.filter((n) => n.text && n.kind !== 'claim').length ? ['', 'Earlier on this task:', ...r.history.filter((n) => n.text && n.kind !== 'claim').map((n) => `- ${n.kind}${n.by ? ` (${n.by})` : ''}: ${n.text}`)] : []),
         '',
@@ -243,17 +245,18 @@ export async function runMcp() {
     {
       title: 'Update task',
       description:
-        'Change a task: status (todo, running, review, blocked, failed), lane, title, description, acceptance, verify or dependencies, optionally with a note for the board. Done is only reachable through goally_complete_task.',
+        'Change a task: status (todo, running, review, blocked, failed, dropped), lane, title, description, acceptance, verify, model or dependencies, optionally with a note for the board. Done is only reachable through goally_complete_task. Dropped takes a task out of scope (descoped, or a race candidate that lost); it needs a note with the reason and no longer blocks GO.',
       inputSchema: {
         taskId: z.string(),
         agent: agent.optional(),
-        status: z.enum(['todo', 'running', 'review', 'blocked', 'failed']).optional(),
+        status: z.enum(['todo', 'running', 'review', 'blocked', 'failed', 'dropped']).optional(),
         note: z.string().optional(),
         lane: z.string().optional(),
         title: z.string().optional(),
         description: z.string().optional(),
         acceptance: z.string().optional(),
         verify: z.string().optional(),
+        model: z.string().optional(),
         depends: z.array(z.string()).optional(),
       },
     },
@@ -327,7 +330,7 @@ export async function runMcp() {
     'goally_finish',
     {
       title: 'Finish mission',
-      description: 'Close the mission. Succeeds only when every task is proven and every message answered; otherwise returns what is missing.',
+      description: 'Close the mission. Succeeds only when every task is proven (or dropped with a reason) and every message answered; otherwise returns what is missing.',
       inputSchema: {},
     },
     wrap(async () => {

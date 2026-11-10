@@ -21,7 +21,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon',
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.otf': 'font/otf', '.ttf': 'font/ttf', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
 };
-const TASK_STATUSES = ['todo', 'running', 'review', 'blocked', 'done', 'failed'];
+const TASK_STATUSES = ['todo', 'running', 'review', 'blocked', 'done', 'failed', 'dropped'];
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args);
@@ -164,12 +164,12 @@ export async function startDaemon() {
         remoteUrl: remoteUrl() ? `${remoteUrl()}/#/m/${m.id}` : null,
         maxParallelAgents: config.maxParallelAgents,
         lanes: m.state.lanes,
-        tasks: m.state.tasks.map((t) => ({ id: t.id, title: t.title, lane: t.lane, depends: t.depends })),
+        tasks: m.state.tasks.map((t) => ({ id: t.id, title: t.title, lane: t.lane, depends: t.depends, model: t.model })),
       };
     },
     addTask(body) {
       const m = missionFrom(body);
-      m.append('task.add', { task: { title: body.title, description: body.description, acceptance: body.acceptance, verify: body.verify, depends: body.depends, lane: body.lane } });
+      m.append('task.add', { task: { title: body.title, description: body.description, acceptance: body.acceptance, verify: body.verify, depends: body.depends, lane: body.lane, model: body.model } });
       return { taskId: m.state.tasks.at(-1).id };
     },
     setLanes(body) {
@@ -182,8 +182,9 @@ export async function startDaemon() {
       const task = findTask(m, body.taskId);
       if (body.status && !TASK_STATUSES.includes(body.status)) throw Object.assign(new Error(`status must be one of ${TASK_STATUSES.join(', ')}`), { status: 400 });
       if (body.status === 'done') throw Object.assign(new Error('Use goally_complete_task with evidence to mark a task done.'), { status: 400 });
+      if (body.status === 'dropped' && !String(body.note || '').trim()) throw Object.assign(new Error('Dropping a task needs a note with the reason; the operator reads it.'), { status: 400 });
       const edit = {};
-      for (const k of ['title', 'description', 'acceptance', 'verify', 'lane']) if (typeof body[k] === 'string') edit[k] = redact(body[k], k === 'description' ? 4000 : 600);
+      for (const k of ['title', 'description', 'acceptance', 'verify', 'lane', 'model']) if (typeof body[k] === 'string') edit[k] = redact(body[k], k === 'description' ? 4000 : 600);
       if (Array.isArray(body.depends)) edit.depends = body.depends.map((d) => String(d).toUpperCase());
       m.append('task.update', { taskId: task.id, status: body.status, note: body.note ? redact(body.note, 2000) : undefined, by: body.agent ? agentName(body.agent) : undefined, ...edit });
       return { ok: true, task: { id: task.id, status: task.status, lane: task.lane } };
@@ -195,10 +196,11 @@ export async function startDaemon() {
       const s = m.state;
       if (s.status === 'paused') throw Object.assign(new Error('Mission is paused on the board. Wait for the operator to resume it.'), { status: 409 });
       if (task.status === 'done') throw Object.assign(new Error(`${task.id} is already done.`), { status: 409 });
+      if (task.status === 'dropped') throw Object.assign(new Error(`${task.id} was dropped. Ask the manager before reviving it.`), { status: 409 });
       if (task.status === 'running' && task.owner && task.owner !== by && !body.takeover) {
         throw Object.assign(new Error(`${task.id} is already claimed by ${task.owner}. Pass takeover: true only if that agent is gone.`), { status: 409 });
       }
-      const waiting = task.depends.filter((d) => s.tasks.find((t) => t.id === d)?.status !== 'done');
+      const waiting = task.depends.filter((d) => !['done', 'dropped'].includes(s.tasks.find((t) => t.id === d)?.status));
       if (waiting.length) throw Object.assign(new Error(`${task.id} waits for ${waiting.join(', ')}. Pick another task or ask the manager.`), { status: 409 });
       const running = s.tasks.filter((t) => t.status === 'running' && t.id !== task.id).length;
       if (task.status !== 'running' && running >= config.maxParallelAgents) {
@@ -210,7 +212,7 @@ export async function startDaemon() {
         result: t.notes.filter((n) => n.kind === 'result').at(-1)?.text || '',
         evidence: t.evidence.map((e) => `${e.kind}: ${e.ref}`),
       }));
-      return { task: { id: task.id, title: task.title, description: task.description, acceptance: task.acceptance, verify: task.verify, lane: task.lane }, goal: s.goal, missionTitle: s.title, inputs, history: task.notes.slice(-8) };
+      return { task: { id: task.id, title: task.title, description: task.description, acceptance: task.acceptance, verify: task.verify, lane: task.lane, model: task.model }, goal: s.goal, missionTitle: s.title, inputs, history: task.notes.slice(-8) };
     },
     report(body) {
       const m = missionFrom(body);

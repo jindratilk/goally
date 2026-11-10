@@ -68,7 +68,7 @@ export function buildPrompt(mission, { reason = 'interval', git = null } = {}) {
   L.push('');
   L.push('## Tasks');
   for (const t of s.tasks) {
-    L.push(`- ${t.id} [${t.status}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.owner ? ` · owner ${t.owner}` : ''}`);
+    L.push(`- ${t.id} [${t.status}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.model ? ` · model ${t.model}` : ''}${t.owner ? ` · owner ${t.owner}` : ''}`);
     if (t.acceptance) L.push(`  acceptance: ${redact(t.acceptance, 400)}`);
     if (t.verify) L.push(`  verify: ${redact(t.verify, 300)}`);
     if (t.startedAt) L.push(`  started ${ago(now - t.startedAt)} ago${t.doneAt ? `, done after ${ago(t.doneAt - t.startedAt)}` : ''}`);
