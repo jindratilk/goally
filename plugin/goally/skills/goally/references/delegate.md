@@ -8,7 +8,7 @@ A QA or review task reports every problem it can prove, not only the first. A wo
 
 **Models.** By default, use your harness's subagents on their default model; don't choose models yourself. When the operator assigns models to tasks, set `model` on those tasks and run each one on its model. In T3 Code, look up the available models with `orchestrator_capabilities` and start each task with `delegate_task` on its model. Elsewhere, use the harness's own subagents if they can run that model. If an assigned model isn't available, tell the operator instead of substituting another. A worker on another provider can claim its task only if that harness has the Goally MCP server; if it doesn't, say so.
 
-**Parallelism.** Run independent tasks at the same time. The board enforces the operator's limit on tasks in progress, and a claim over the limit is refused. When that happens, wait for one to finish rather than queueing blindly. Tasks with unmet dependencies wait too.
+**Parallelism.** Run independent tasks at the same time. The board enforces the operator's limit on tasks in progress, if one is set, and a claim over the limit is refused. When that happens, wait for one to finish rather than queueing blindly. Tasks with unmet dependencies wait too.
 
 **Pace.**
 

@@ -22,14 +22,14 @@ function Field({ label, hint, children, wide }: { label: string; hint?: ReactNod
   )
 }
 
-function Range({ label, value, min, max, unit, onCommit, disabled }: { label: string; value: number; min: number; max: number; unit?: string; onCommit: (v: number) => void; disabled?: boolean }) {
+function Range({ label, value, min, max, unit, format, onCommit, disabled }: { label: string; value: number; min: number; max: number; unit?: string; format?: (v: number) => string; onCommit: (v: number) => void; disabled?: boolean }) {
   const [v, setV] = useState(value)
   useEffect(() => setV(value), [value])
   return (
     <div className="flex w-full items-center gap-3 sm:w-64">
       <Slider aria-label={label} className="flex-1" min={min} max={max} value={v} disabled={disabled} onValueChange={(x) => setV(Array.isArray(x) ? x[0] : x)} onValueCommitted={(x) => onCommit(Array.isArray(x) ? x[0] : x)} />
-      <span className="w-14 text-right text-sm font-medium tabnum">
-        {v}
+      <span className="w-16 text-right text-sm font-medium whitespace-nowrap tabnum">
+        {format ? format(v) : v}
         {unit && <span className="ml-0.5 text-xs text-muted-foreground">{unit}</span>}
       </span>
     </div>
@@ -97,8 +97,9 @@ export function SettingsView({ overview, onSaved }: { overview: Overview; onSave
       </Section>
 
       <Section title="Agents" description="Hooks enforce these on the next event.">
-        <Field label="Max parallel agents" hint="Extra launches are denied until a slot frees up.">
-          <Range label="Max parallel agents" value={cfg.maxParallelAgents} min={1} max={12} disabled={ro} onCommit={(v) => save({ maxParallelAgents: v })} />
+        <Field label="Max parallel agents" hint="Extra launches are denied until a slot frees up. Slide to the end for no limit.">
+          {/* The step after 12 is "No limit", stored as 0. */}
+          <Range label="Max parallel agents" value={cfg.maxParallelAgents || 13} min={1} max={13} format={(v) => (v === 13 ? 'No limit' : String(v))} disabled={ro} onCommit={(v) => save({ maxParallelAgents: v === 13 ? 0 : v })} />
         </Field>
       </Section>
 

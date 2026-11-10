@@ -69,7 +69,8 @@ export function sanitizeConfig(c) {
   let intervention = c.intervention;
   if (intervention === 'block') intervention = 'message';
   return {
-    maxParallelAgents: clampInt(c.maxParallelAgents, 1, 32, d.maxParallelAgents),
+    // 0 means no limit.
+    maxParallelAgents: clampInt(c.maxParallelAgents, 0, 32, d.maxParallelAgents),
     supervisor: {
       provider: ['grok', 'claude', 'codex'].includes(c.supervisor?.provider) ? c.supervisor.provider : d.supervisor.provider,
       enabled: Boolean(c.supervisor?.enabled),

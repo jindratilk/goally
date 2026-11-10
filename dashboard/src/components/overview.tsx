@@ -30,7 +30,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
         <Kpi icon={ShieldCheck} label="Launched" value={`${v.done}/${v.total}`} tone={v.go ? 'success' : undefined}>
           <Progress value={Math.round(v.coverage * 100)} className="[&_[data-slot=progress-indicator]]:bg-success" />
         </Kpi>
-        <Kpi icon={Bot} label="Agents running" value={`${running}/${config.maxParallelAgents}`} sub={`${s.agentsTotal} total · peak ${s.peakParallel}`} />
+        <Kpi icon={Bot} label="Agents running" value={`${running}/${config.maxParallelAgents || '∞'}`} sub={`${s.agentsTotal} total · peak ${s.peakParallel}`} />
         <Kpi icon={FlaskConical} label="Tests passing" value={pct(s.passRate)} sub={`${s.testsPass}/${s.tests} · ${s.fullBuilds} full builds`} tone={s.testsFail ? 'warning' : undefined} />
         <Kpi icon={ShieldAlert} label="Open findings" value={open.length} sub={`${s.interventionsResolved}/${s.interventions} interventions resolved`} tone={open.some((f) => f.severity === 'high') ? 'danger' : undefined} />
       </div>
@@ -69,7 +69,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
         <Card className="xl:col-span-3">
           <CardHeader>
             <CardTitle>Parallel agents</CardTitle>
-            <CardDescription>Running subagents over time against the limit of {config.maxParallelAgents}.</CardDescription>
+            <CardDescription>Running subagents over time{config.maxParallelAgents ? ` against the limit of ${config.maxParallelAgents}` : ', no limit set'}.</CardDescription>
           </CardHeader>
           <CardContent>
             {series.length > 1 ? (
@@ -85,7 +85,7 @@ export function Overview({ mission, config, now, onOpenTask, go }: { mission: Mi
                   <XAxis tick={{ fill: 'var(--muted-foreground)' }} dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={(t) => clock(t - mission.startedAt)} tickLine={false} axisLine={false} minTickGap={48} />
                   <YAxis tick={{ fill: 'var(--muted-foreground)' }} allowDecimals={false} domain={[0, Math.max(config.maxParallelAgents + 1, s.peakParallel)]} tickLine={false} axisLine={false} width={40} />
                   <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => `T+${clock(Number(p?.[0]?.payload?.t) - mission.startedAt)}`} />} />
-                  <ReferenceLine y={config.maxParallelAgents} stroke="var(--warning)" strokeDasharray="4 4" />
+                  {config.maxParallelAgents > 0 && <ReferenceLine y={config.maxParallelAgents} stroke="var(--warning)" strokeDasharray="4 4" />}
                   <Area type="stepAfter" dataKey="n" stroke="var(--color-n)" strokeWidth={1.5} fill="url(#fillN)" isAnimationActive={false} />
                 </AreaChart>
               </ChartContainer>

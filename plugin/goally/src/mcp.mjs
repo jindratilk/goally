@@ -112,7 +112,7 @@ export async function runMcp() {
         `Lanes: ${r.lanes.join(', ')}`,
         ...r.tasks.map((t) => `- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.title}${t.depends?.length ? ` · after ${t.depends.join(', ')}` : ''}${t.model ? ` · model ${t.model}` : ''}`),
         '',
-        `Hand ready tasks to your subagents, at most ${r.maxParallelAgents} in progress at once. A subagent needs only this line in its brief, plus anything from this chat it can't find itself:`,
+        `Hand ready tasks to your subagents, ${r.maxParallelAgents ? `at most ${r.maxParallelAgents} in progress at once` : 'as many in parallel as the machine handles (the operator set no limit)'}. A subagent needs only this line in its brief, plus anything from this chat it can't find itself:`,
         '  "You are on Goally task CT-n. Call goally_claim_task with taskId CT-n and your agent name, then follow what it returns."',
         'Small tasks you can do yourself the same way (claim, check, complete).',
         cfg.supervisor.enabled

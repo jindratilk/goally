@@ -83,7 +83,7 @@ export class HookHandler {
       mission.append('blocked', { what: 'subagent', reason: 'Mission paused', agent: 'main' });
       return { permission: 'deny', user_message: 'Goally: mission is paused. Resume it on the board to launch agents.' };
     }
-    if (running >= cfg.maxParallelAgents) {
+    if (cfg.maxParallelAgents > 0 && running >= cfg.maxParallelAgents) {
       mission.append('blocked', { what: 'subagent', reason: `Parallel limit ${cfg.maxParallelAgents} reached${tag ? ` (${tag})` : ''}`, agent: 'main' });
       return {
         permission: 'deny',
