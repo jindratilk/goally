@@ -13,4 +13,4 @@ Answer with `goally_ack`:
 - `resolved`: it's done, or it was already true.
 - `rejected`: you disagree. The note must carry the concrete reason, such as evidence the reviewer didn't have or an operator instruction that conflicts. The operator reads it.
 
-Unanswered messages keep the mission NO-GO and get resent. If a message concerns a running subagent, redirect or stop that agent rather than waiting for it to finish.
+Unanswered operator messages keep the mission NO-GO. Goal Director messages and findings are advice: they get resent until answered, but they never block finishing once every task is proven. If a message concerns a running subagent, redirect or stop that agent rather than waiting for it to finish.

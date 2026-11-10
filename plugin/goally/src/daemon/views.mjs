@@ -25,10 +25,10 @@ export function verdict(state) {
   if (state.lastEditAt && (!state.lastGreenTestAt || state.lastGreenTestAt < state.lastEditAt) && state.tasks.some((t) => t.status === 'done')) {
     blockers.push('Files changed after the last passing test. Re-run the targeted tests.');
   }
-  const openHigh = state.findings.filter((f) => f.status === 'open' && f.severity === 'high');
-  for (const f of openHigh) blockers.push(`Goal Director: ${f.title}`);
-  const unacked = state.messages.filter((m) => OPEN_MSG.includes(m.status));
-  if (unacked.length) blockers.push(`${unacked.length} message(s) not acknowledged by MAIN (goally_ack)`);
+  // Goal Director findings and its messages are advice: they show up as warnings but never block GO.
+  const warnings = state.findings.filter((f) => f.status === 'open' && f.severity === 'high').map((f) => `Goal Director: ${f.title}`);
+  const unacked = state.messages.filter((m) => OPEN_MSG.includes(m.status) && m.from === 'user');
+  if (unacked.length) blockers.push(`${unacked.length} operator message(s) not acknowledged by MAIN (goally_ack)`);
   const done = stations.filter((s) => s.go).length;
   return {
     go: stations.length > 0 && done === stations.length && blockers.length === 0,
@@ -37,6 +37,7 @@ export function verdict(state) {
     coverage: stations.length ? done / stations.length : 0,
     stations,
     blockers,
+    warnings,
   };
 }
 
@@ -152,6 +153,11 @@ export function statusText(mission, { url } = {}) {
     lines.push('');
     lines.push('Blockers:');
     for (const b of v.blockers) lines.push(`- ${b}`);
+  }
+  if (v.warnings.length) {
+    lines.push('');
+    lines.push('Open Goal Director findings (advice, not blocking):');
+    for (const w of v.warnings) lines.push(`- ${w}`);
   }
   const inbox = s.messages.filter((m) => OPEN_MSG.includes(m.status));
   if (inbox.length) {
