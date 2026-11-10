@@ -10,10 +10,13 @@ A good task has:
 - **description**: what to change and where, written for a subagent that never saw this chat.
 - **acceptance**: something observable. If you can't say how you'd notice it's true, the task isn't ready.
 - **verify**: the smallest check that proves it. That can be one test file, a URL, a command against a preview, or `manual: <what to look at>`. `goally_check` runs this command. A whole-project build costs the mission minutes, and the Goal Director will flag it.
-- **depends**: only when a task genuinely needs another task's output. False dependencies serialize work that could run in parallel. A subagent can't claim a task until its dependencies are done.
+- **depends**: only when a task genuinely needs another task's output. False dependencies serialize work that could run in parallel. A subagent can't claim a task until its dependencies are done or dropped.
+- **model**: only when the operator assigned a model to this task ("these on Claude Opus, these on gpt-6.1-sol"). Leave it out otherwise; you don't pick models on your own.
+
+**Contract first.** When two or more parallel tasks build against the same new type, API, schema or file format, make the first task the contract: types, function signatures and module layout with `not implemented` bodies, plus one example call written from the caller's side. Verify it with the typecheck or `manual: <file>`, and make the tasks that use it depend on it. An agent that has to change the contract reports a `decision` on its task instead of quietly changing it, and the manager updates the contract so every parallel agent builds against the same shape. One sketch, not competing designs. Skip this when no interface is shared.
 
 Sizing: one agent, one sitting. If a task needs a paragraph to explain, split it. If three tasks touch the same file for the same reason, merge them, because two agents editing one file shows up as a collision.
 
 If the goal is user-facing, one task should prove the real flow end to end, usually in a `release` or `qa` lane with a screenshot.
 
-Scope is the operator's, not yours. Work the goal doesn't need doesn't get a task, even if it would be nice. If you discover required work mid-mission, `goally_add_task` puts it on the board where the operator can see it. `goally_update_task` fixes a task that turned out wrong, and `goally_set_lanes` fixes the lanes.
+Scope is the operator's, not yours. Work the goal doesn't need doesn't get a task, even if it would be nice. If you discover required work mid-mission, `goally_add_task` puts it on the board where the operator can see it. `goally_update_task` fixes a task that turned out wrong, and `goally_set_lanes` fixes the lanes. When the operator descopes a task, or the goal turns out not to need it, drop it: `goally_update_task` with status `dropped` and a note saying why. It stays visible on the board, leaves the proven count and no longer blocks GO.

@@ -85,6 +85,7 @@ function makeTask(t, i) {
     verify: String(t.verify || ''),
     depends: Array.isArray(t.depends) ? t.depends.map(String) : [],
     lane: t.lane ? String(t.lane).trim().toLowerCase() : '',
+    model: t.model ? String(t.model).trim().slice(0, 80) : '',
     status: 'todo',
     owner: null,
     agentIds: [],
@@ -141,7 +142,7 @@ export function reduce(state, ev) {
       if (!task) break;
       if (ev.status) task.status = ev.status;
       if (ev.owner) task.owner = ev.owner;
-      for (const k of ['title', 'description', 'acceptance', 'verify']) if (typeof ev[k] === 'string' && ev[k].trim()) task[k] = k === 'title' ? short(ev[k], 120) : ev[k];
+      for (const k of ['title', 'description', 'acceptance', 'verify', 'model']) if (typeof ev[k] === 'string' && ev[k].trim()) task[k] = k === 'title' ? short(ev[k], 120) : ev[k];
       if (Array.isArray(ev.depends)) task.depends = ev.depends.map(String);
       if (typeof ev.lane === 'string') {
         task.lane = ev.lane.trim().toLowerCase();

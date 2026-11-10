@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export type TaskStatus = 'todo' | 'running' | 'review' | 'blocked' | 'failed' | 'done'
+export type TaskStatus = 'todo' | 'running' | 'review' | 'blocked' | 'failed' | 'done' | 'dropped'
 export type DirectorProvider = 'grok' | 'claude' | 'codex'
 export const DIRECTOR_LABELS: Record<DirectorProvider, string> = { grok: 'Grok Build', claude: 'Claude', codex: 'Codex' }
 
@@ -26,6 +26,7 @@ export interface Task {
   verify: string
   depends: string[]
   lane: string
+  model?: string
   status: TaskStatus
   owner: string | null
   agentIds: string[]

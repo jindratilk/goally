@@ -13,7 +13,7 @@ const COLUMNS: { key: string; statuses: TaskStatus[]; label: string }[] = [
   { key: 'todo', statuses: ['todo'], label: 'To-do' },
   { key: 'progress', statuses: ['running', 'blocked', 'failed'], label: 'In progress' },
   { key: 'testing', statuses: ['review'], label: 'Testing' },
-  { key: 'launched', statuses: ['done'], label: 'Launched' },
+  { key: 'launched', statuses: ['done', 'dropped'], label: 'Launched' },
 ]
 
 export function agentsFor(task: Task, agents: Agent[]) {
@@ -22,7 +22,7 @@ export function agentsFor(task: Task, agents: Agent[]) {
 
 function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission; now: number; onOpen: () => void }) {
   const live = agentsFor(task, mission.agents).find((a) => a.status === 'running')
-  const waiting = task.depends.filter((d) => mission.tasks.find((t) => t.id === d)?.status !== 'done')
+  const waiting = task.depends.filter((d) => !['done', 'dropped'].includes(mission.tasks.find((t) => t.id === d)?.status ?? ''))
   const flagged = mission.findings.some((f) => f.taskId === task.id && f.status === 'open')
   return (
     <motion.button
@@ -35,6 +35,7 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
       <div className="flex items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
         <span className="font-mono">{task.id}</span>
         {task.lane && <span>· {task.lane}</span>}
+        {task.model && <span className="truncate">· {task.model}</span>}
         <span className="ml-auto flex items-center gap-1.5">
           {flagged && <OctagonAlert className="size-3.5 text-warning" />}
           {waiting.length > 0 && task.status === 'todo' && <Lock className="size-3.5" />}
@@ -62,6 +63,8 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
           <span className="truncate text-warning">Proof rejected</span>
         ) : task.status === 'todo' && waiting.length ? (
           <span>After {waiting.join(', ')}</span>
+        ) : task.status === 'dropped' ? (
+          <span className="truncate">Dropped · {dropReason(task)}</span>
         ) : task.status === 'done' ? (
           <span className="truncate font-mono">{task.evidence.findLast((e) => e.kind !== 'screenshot' && e.kind !== 'note')?.ref}</span>
         ) : (
@@ -70,6 +73,10 @@ function TaskCard({ task, mission, now, onOpen }: { task: Task; mission: Mission
       </div>
     </motion.button>
   )
+}
+
+function dropReason(task: Task) {
+  return task.notes.filter((n) => n.text && n.status === 'dropped').at(-1)?.text ?? ''
 }
 
 function blockerText(task: Task) {
@@ -259,6 +266,7 @@ export function TaskSheet({ taskId, mission, now, onClose }: { taskId: string | 
                 <Row label="Verify">
                   <code className="font-mono text-xs">{task.verify || '—'}</code>
                 </Row>
+                {task.model && <Row label="Model">{task.model}</Row>}
                 <Row label="Owner">{task.owner || <span className="text-muted-foreground">Unclaimed</span>}</Row>
                 <Row label="Depends on">{task.depends.length ? task.depends.join(', ') : '—'}</Row>
                 <Row label="Proof">

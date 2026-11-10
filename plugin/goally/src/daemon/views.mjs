@@ -1,7 +1,13 @@
 const OPEN_MSG = ['queued', 'sent', 'delivered'];
 
+/** Why a dropped task left the board: the note on its last status change. */
+export function dropReason(task) {
+  return task.notes.filter((n) => n.text && n.status === 'dropped').at(-1)?.text || 'Dropped';
+}
+
 export function verdict(state) {
-  const stations = state.tasks.map((t) => {
+  // Dropped tasks are out of scope: they neither count as proven nor block GO.
+  const stations = state.tasks.filter((t) => t.status !== 'dropped').map((t) => {
     let reason = '';
     let go = false;
     if (t.status === 'done' && t.proof?.ok) go = true;
@@ -139,8 +145,8 @@ export function statusText(mission, { url } = {}) {
   lines.push('');
   lines.push('Tasks:');
   for (const t of s.tasks) {
-    const st = v.stations.find((x) => x.taskId === t.id);
-    lines.push(`- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.status.toUpperCase()}${st.go ? ' GO' : ''} · ${t.title}${t.owner ? ` · ${t.owner}` : ''}${st.go ? '' : ` · ${st.reason}`}`);
+    const st = v.stations.find((x) => x.taskId === t.id) || { go: false, reason: dropReason(t) };
+    lines.push(`- [${t.id}]${t.lane ? ` (${t.lane})` : ''} ${t.status.toUpperCase()}${st.go ? ' GO' : ''} · ${t.title}${t.model ? ` · model ${t.model}` : ''}${t.owner ? ` · ${t.owner}` : ''}${st.go ? '' : ` · ${st.reason}`}`);
   }
   if (v.blockers.length) {
     lines.push('');
@@ -173,8 +179,9 @@ export function continuationBrief(mission, { url } = {}) {
   for (const t of proven) out.push(`- [${t.id}] ${t.title} · evidence: ${t.evidence.map((e) => `${e.kind}:${e.ref}`).join(', ')}`);
   out.push('');
   out.push('## Remaining');
-  for (const t of s.tasks.filter((x) => !(x.status === 'done' && x.proof?.ok))) {
+  for (const t of s.tasks.filter((x) => !(x.status === 'done' && x.proof?.ok) && x.status !== 'dropped')) {
     out.push(`- [${t.id}] ${t.status.toUpperCase()} · ${t.title}`);
+    if (t.model) out.push(`  - model: ${t.model}`);
     if (t.acceptance) out.push(`  - acceptance: ${t.acceptance}`);
     if (t.verify) out.push(`  - verify: ${t.verify}`);
     if (t.owner) out.push(`  - owner: ${t.owner}`);
@@ -184,6 +191,12 @@ export function continuationBrief(mission, { url } = {}) {
     const lastAgent = agents.at(-1);
     if (lastAgent?.summary) out.push(`  - last agent summary: ${lastAgent.summary.slice(0, 400)}`);
     if (lastAgent?.modifiedFiles?.length) out.push(`  - files: ${lastAgent.modifiedFiles.slice(0, 12).join(', ')}`);
+  }
+  const dropped = s.tasks.filter((t) => t.status === 'dropped');
+  if (dropped.length) {
+    out.push('');
+    out.push('## Dropped (do not redo)');
+    for (const t of dropped) out.push(`- [${t.id}] ${t.title} · ${dropReason(t)}`);
   }
   const recentErrors = s.timeline.filter((e) => e.level === 'error').slice(-6);
   if (recentErrors.length) {

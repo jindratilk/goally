@@ -36,6 +36,7 @@ export const TASK_META: Record<TaskStatus, { label: string; tone: Tone }> = {
   blocked: { label: 'Blocked', tone: 'danger' },
   failed: { label: 'Failed', tone: 'danger' },
   done: { label: 'Launched', tone: 'success' },
+  dropped: { label: 'Dropped', tone: 'neutral' },
 }
 
 export function Pill({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

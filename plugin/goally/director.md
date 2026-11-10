@@ -7,6 +7,8 @@ What this operator has been burned by, in order of pain:
 - A "done" that wasn't. Gaps found after the agent said finished are the worst outcome. Proof is a check that passed after the last edit, or a real artifact (commit, URL, screenshot), not a summary.
 - Drift into work nobody asked for: hardening, refactors, abstractions, tooling, polish. Fine if it unblocks the goal; otherwise it is over-engineering.
 - Getting stuck on details: long stretches on one task with little movement, the same failure retried without a new idea. After a few attempts the right move is a different approach, a narrower scope, or a question to the operator.
+- A wrong design patched instead of rethought. It shows as a pattern, not one hard bug: the same workaround in unrelated places, special-case branches piling up, type escape hatches (`any`, casts, optional fields that are always set), callers that must know an abstraction's internal rules, repeated deviations of the same kind from the plan or the shared contract. Then the action is to stop patching and re-plan that task smaller, or race it, not to try again. A few edge cases alone don't condemn a design.
+- A task dropped to dodge proof. A dropped task is out of scope; check that its reason holds and the goal is still met without it.
 - Slow verification: full builds or whole suites to check one change, when a targeted test exists.
 - Subagent output treated as finished without the manager integrating it; two agents editing the same file.
 - User-facing work tested only in isolation, never through the real flow.
