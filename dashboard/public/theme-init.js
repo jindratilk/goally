@@ -9,5 +9,5 @@
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]').content = dark ? '#191a17' : '#f7f7f4';
+  document.querySelector('meta[name="theme-color"]').content = dark ? '#18181a' : '#f7f7f4';
 })();

@@ -84,20 +84,21 @@
 
 .dark {
   color-scheme: dark;
-  --ink: #eeeee7;
-  --background: #191a17;
-  --card: #22231f;
-  --popover: #292a25;
-  --primary-foreground: #191a17;
-  --secondary: #30312b;
-  --muted: #2b2c26;
-  --muted-foreground: #b0b1a5;
-  --subtle: #97998c;
-  --accent: #35362e;
-  --border: #3c3e34;
-  --input: #55584a;
-  --ring: #b4b7a5;
-  --sidebar: #1d1e1a;
+  /* Neutral graphite: same lightness as before, without the beige cast. */
+  --ink: #ededee;
+  --background: #18181a;
+  --card: #212123;
+  --popover: #28282b;
+  --primary-foreground: #18181a;
+  --secondary: #2f2f32;
+  --muted: #2a2a2d;
+  --muted-foreground: #aaaaaf;
+  --subtle: #929297;
+  --accent: #343438;
+  --border: #3b3b3f;
+  --input: #535358;
+  --ring: #b3b3b9;
+  --sidebar: #1c1c1e;
   --success: #80c6a3;
   --danger: #f493a5;
   --warning: #eeb27d;
@@ -113,16 +114,16 @@
   background: var(--preview-bg);
 }
 .appearance-preview[data-appearance="dark"] {
-  --preview-bg: #191a17;
-  --preview-sidebar: #1d1e1a;
-  --preview-card: #292a25;
-  --preview-line: #44463b;
-  --preview-ink: #b0b1a5;
+  --preview-bg: #18181a;
+  --preview-sidebar: #1c1c1e;
+  --preview-card: #28282b;
+  --preview-line: #434347;
+  --preview-ink: #aaaaaf;
 }
 .appearance-preview[data-appearance="system"] {
-  --preview-bg: linear-gradient(115deg, #f7f7f4 49.5%, #191a17 50%);
-  --preview-card: color-mix(in oklab, #8c8f7a 12%, transparent);
-  --preview-line: #93968455;
+  --preview-bg: linear-gradient(115deg, #f7f7f4 49.5%, #18181a 50%);
+  --preview-card: color-mix(in oklab, #8e8e92 12%, transparent);
+  --preview-line: #94949855;
 }
 
 @layer base {
